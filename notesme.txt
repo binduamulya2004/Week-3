@@ -1,0 +1,59 @@
+npm init -y
+npm install express bcrypt jsonwebtoken joi knex mysql2 dotenv crypto morgan body-parser cors
+npm install --save-dev nodemon
+npx knex migrate:make create_users_table --knexfile=src/mysql/knexfile.js
+npm install knex -g
+knex init
+ npx knex migrate:make create_users_table --knexfile=mysql/knexfile.js
+npx knex migrate:latest --knexfile=src/mysql/knexfile.js
+
+
+ng generate interceptor auth
+ng generate service services/auth
+
+
+npm install ngx-toastr --save
+ npm install ngx-toastr@15.0.0 --save
+  "styles": [
+              "src/styles.scss",
+             "node_modules/bootstrap/dist/css/bootstrap.min.css",
+            "node_modules/ngx-toastr/toastr.css"
+            ],
+
+
+
+npm install aws-sdk sharp
+npm install @aws-sdk/client-s3
+
+npx knex migrate:make create_categories_table
+npx knex migrate:make create_vendors_table
+npx knex migrate:make create_products_table
+
+go to mysql and runn
+npx knex migrate:latest
+
+
+npx knex seed:make categories_seed
+npx knex seed:make vendors_seed
+npx knex seed:make products_seed
+npx knex seed:run 
+<<<<<<< HEAD
+
+
+DB_HOST = localhost
+DB_USER = root
+DB_PASSWORD =
+DB_NAME = inventory
+DB_PORT = 3306
+JWT_SECRET = ghfvhmvghbgrf
+
+AWS_ACCESS_KEY_ID=AKIAXS4KHLBARPOU6N4L
+AWS_SECRET_ACCESS_KEY= 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
+AWS_BUCKET_NAME= akv-interns
+AWS_REGION=ap-south-1
+
+
+npx knex migrate:make create_product_to_vendor
+npx knex seed:make seed_product_to_vendor
+=======
+>>>>>>> 5a347dd (after dng table ui)

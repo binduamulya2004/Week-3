@@ -1,0 +1,215 @@
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css"
+    rel="stylesheet">
+
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#"> Inventory App</a>
+        <div class="ms-auto d-flex align-items-center">
+            <!-- Dropdown -->
+            <div class="dropdown-container ms-3 position-relative">
+                <!-- Dropdown button -->
+                <button class="dropdown-toggle-btn d-flex align-items-center" (click)="toggleDropdown()">
+                    <img [src]="thumbnail" alt="User Thumbnail" class="rounded-circle me-2" width="40" height="40" />
+                    <div class="d-flex flex-column text-start">
+                        <span class="fw-bold text-dark">{{ username }}</span>
+                        <small class="text-muted">{{ email }}</small>
+                    </div>
+                </button>
+                <!-- Dropdown menu -->
+                <ul class="custom-dropdown-menu" [class.show]="dropdownOpen">
+                    <li>
+                        <a class="dropdown-item"  (click)="openProfilePhotoModal()">Upload Profile Photo</a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item"  (click)="logout()">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Modal for Profile Photo Upload -->
+<div *ngIf="isModalOpen" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">Upload Profile Picture</h5>
+            <button type="button" class="close" (click)="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <input type="file" (change)="onFileChange($event)" class="form-control mb-2" />
+            <button (click)="uploadProfilePhoto()" [disabled]="isUploading" class="btn btn-primary">
+                {{ isUploading ? 'Uploading...' : 'Upload' }}
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<div class="row mt-4">
+
+
+    
+    <!-- left side of the dashboard -->
+
+    
+    <div class="col-9">
+    <div class="container mt-4">
+        <!-- Entire Inventory Section with White Background as One Box -->
+        <div class="bg-white p-4 rounded shadow-sm">
+
+            <!-- Inventory Header Section -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <!-- Table Title -->
+                <h3 class="mb-0">Inventory Movements</h3>
+
+                <!-- Vendor Count and Action Buttons in the same row -->
+                <div class="d-flex align-items-center">
+                    <!-- Vendor Count -->
+                    <div class="badge bg-light text-dark rounded-pill p-2 me-3">
+                        <strong>{{ vendorCount }}</strong> Vendors
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div>
+                        <button class="btn btn-outline-violet me-2">Move To</button>
+                        <button class="btn btn-outline-violet me-2">
+                            <i class="bi bi-download"></i> Download All
+                        </button>
+                        <button class="btn btn-outline-violet me-2">
+                            <i class="bi bi-upload"></i> Import
+                        </button>
+                        <button class="btn btn-violet me-2"> <!-- Violet background for Add Product -->
+                            <i class="bi bi-plus-circle"></i> Add Product
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Bar & Filter Button aligned to the right -->
+            <div class="d-flex justify-content-end mb-3">
+                <div class="d-flex">
+                    <input class="form-control me-2" type="text" placeholder="Search products..." aria-label="Search"
+                        style="height: 38px; width: 250px;">
+                    <button class="btn btn-outline-violet" style="height: 38px;">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                </div>
+            </div>
+
+            <!-- View and Cart Buttons -->
+            <div class="d-flex mb-3">
+                <button class="btn btn-outline-violet me-2">View All</button>
+                <button class="btn btn-outline-violet">Cart</button>
+            </div>
+
+            <!-- Inventory Table -->
+
+
+            <!-- Inventory Table -->
+
+            <table class="table table-striped table-bordered table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th><input type="checkbox" class="form-check-input"></th>
+                        <th>Product Name</th>
+                        <th>Status</th>
+                        <th>Category</th>
+
+                        <th>Vendors</th> <!-- Modified to display vendors -->
+                        <th>Quantity</th>
+                        <th>Unit</th>
+                        <th>Actions</th>
+
+                        <th>Vendors</th>
+                        <th>Quantity</th>
+                        <th>Unit</th>
+                        <th>Actions</th> <!-- New Column for Actions -->
+
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let product of products">
+                        <td><input type="checkbox" class="form-check-input"></td>
+                        <td>{{ product.product_name }}</td>
+                        <td>
+                            <!-- Available or Sold Out status with colored boxes -->
+
+                            <span *ngIf="product.product_status !== 1" class="badge bg-success text-white">Available</span>
+                            <span *ngIf="product.product_status === 1" class="badge bg-light text-dark">Sold Out</span>
+                        </td>
+                        <td>{{ product.category_name }}</td>
+                        <td>
+                            <!-- Display the list of vendors for the current product -->
+                            <div *ngFor="let vendor of product.vendors">
+                                <span class="badge bg-secondary">{{ vendor }}</span>
+                            </div>
+                        </td>
+                        <td>{{ product.quantity_in_stock }}</td>
+                        <td>{{ product.unit }}</td>
+                        <td>
+                            <!-- Action Icons for Download, Edit, and Delete -->
+                            <span *ngIf="product.product_status === 1"
+                                class="badge bg-success text-white">Available</span>
+                            <span *ngIf="product.product_status !== 1" class="badge bg-light text-dark">Sold Out</span>
+                        </td>
+                        <td>{{ product.category_name }}</td>
+                        <td>{{ product.vendor_name }}</td>
+                        <td>{{ product.quantity_in_stock }}</td>
+                        <td>{{ product.unit }}</td>
+                        <td>
+                            <!-- Action Icons for Download, Edit, and Delete without borders -->
+
+                            <button class="btn btn-sm me-2" style="border: none; background: transparent;">
+                                <i class="bi bi-download"></i>
+                            </button>
+                            <button class="btn btn-sm me-2" style="border: none; background: transparent;">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm" style="border: none; background: transparent;">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div> <!-- End of bg-white p-4 rounded -->
+    </div>
+    </div>
+
+
+    <!-- right side of the dashboard -->
+
+
+    <div class="card col-3">
+        <div class="card-header bg-white">
+            <!-- Row 1: Uploaded Files -->
+            <h5 class="mb-2">Files uploaded</h5> <!-- Reduced bottom margin -->
+            <div class="list-group list-group-flush">
+                <div *ngFor="let file of files" class="list-group-item d-flex align-items-center">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input">
+                    </div>
+                    <i class="bi bi-file-earmark-text mx-3"></i>
+                    <div class="flex-grow-1">
+                        <div>{{ file.name }}</div>
+                        <small class="text-muted">{{ file.size }}</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: Buttons -->
+            <div class="d-flex justify-content-start mt-2">
+                <button class="btn btn-outline-secondary btn-sm me-2" >Download all</button>
+                <!-- Reduced padding using btn-sm -->
+                <button class="btn btn-primary btn-sm d-flex align-items-center" class="da">
+                    <i class="bi bi-upload me-2" ></i><span>Upload</span> <!-- Icon first, then text -->
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
