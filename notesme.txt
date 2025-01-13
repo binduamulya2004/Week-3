@@ -37,23 +37,4 @@ npx knex seed:make categories_seed
 npx knex seed:make vendors_seed
 npx knex seed:make products_seed
 npx knex seed:run 
-<<<<<<< HEAD
 
-
-DB_HOST = localhost
-DB_USER = root
-DB_PASSWORD =
-DB_NAME = inventory
-DB_PORT = 3306
-JWT_SECRET = ghfvhmvghbgrf
-
-AWS_ACCESS_KEY_ID=AKIAXS4KHLBARPOU6N4L
-AWS_SECRET_ACCESS_KEY= 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
-AWS_BUCKET_NAME= akv-interns
-AWS_REGION=ap-south-1
-
-
-npx knex migrate:make create_product_to_vendor
-npx knex seed:make seed_product_to_vendor
-=======
->>>>>>> 5a347dd (after dng table ui)
