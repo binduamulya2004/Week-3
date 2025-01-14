@@ -17,5 +17,7 @@ router.get('/vendors/count', authenticate, authController.getVendorCount);
 router.get('/products', authenticate, authController.getProducts);
 
 
+
+
 module.exports = router;
 

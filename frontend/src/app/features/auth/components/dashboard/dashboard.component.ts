@@ -15,9 +15,24 @@ export class DashboardComponent implements OnInit {
   isModalOpen: boolean = false; // Flag to control modal visibility
   selectedFile: File | null = null; // Stores the selected file for upload
   isUploading: boolean = false; // Indicates if file is being uploaded
-  vendorCount: number=0;
-  products: any[]=[];
-files: any;
+  
+
+  vendorCount: number = 0; 
+  products: any[] = [];
+  vendors: any[] = []; 
+
+
+  // Pagination
+  currentPage: number = 1;
+  itemsPerPage: number = 10;
+  totalItems: number = 0;
+  totalPages: number = 0;
+  paginatedProducts: any[] = [];
+
+  files: { name: string, size: string }[] = [];
+  
+
+
 
   constructor(private http: HttpClient) {}
 
@@ -39,15 +54,52 @@ files: any;
   );
 }
 
+  // getProducts() {
+  //   this.http.get<any[]>(`${environment.apiUrl}/auth/products`).subscribe(
+  //     (products) => {
+  //       this.products = products; // Update products array
+  //     },
+  //     (error) => {
+  //       console.error('Error fetching products:', error);
+  //     }
+  //   );
+  // }
+
+
   getProducts() {
-    this.http.get<any[]>(`${environment.apiUrl}/auth/products`).subscribe(
-      (products) => {
-        this.products = products; // Update products array
-      },
-      (error) => {
-        console.error('Error fetching products:', error);
-      }
-    );
+    const params = new HttpParams()
+      .set('page', this.currentPage.toString())
+      .set('limit', this.itemsPerPage.toString());
+
+    this.http.get<{ products: any[], totalItems: number }>(`${environment.apiUrl}/auth/products`, { params })
+      .subscribe(
+        (response) => {
+          this.products = response.products;
+          this.totalItems = response.totalItems;
+          this.totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
+          this.paginatedProducts = this.products;
+        },
+        (error) => {
+          console.error('Error fetching products:', error);
+        }
+      );
+  }
+
+
+  // Navigate to the previous page
+  previousPage() {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+      this.getProducts();
+    }
+  }
+
+  // Navigate to the next page
+  nextPage() {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+      this.getProducts();
+    }
   }
    
 

@@ -120,17 +120,103 @@ module.exports = {
     }
   },
 
-   async getProducts(req, res) {
+
+
+async getVendorCount(req, res) {
+    try {
+      const count = await knex('vendors').count('vendor_id as count').first();
+      res.json({ count: count.count });
+    } catch (error) {
+      console.error('Error fetching vendor count:', error);
+      res.status(500).json({ message: 'Error fetching vendor count' });
+    }
+  },
+
+//   async getProducts(req, res) {
+//     try {
+//       console.log('req.query:', req.query);
+//       let { page = 1, limit = 10 } = req.query;
+
+//       page = parseInt(page); // Ensure page is an integer
+//       limit = parseInt(limit); // Ensure limit is an integer
+//       const offset=(page-1)*limit;
+       
+//       console.log("page:", page);
+//       console.log("limit:", limit);
+//       console.log("offset:", offset);
+
+//       // Get the total count of products
+//       const totalItemsResult = await knex('products').count('* as totalItems').first();
+//       const totalItems = totalItemsResult.totalItems;
+
+//       console.log("totalItems", totalItems);
+//       console.log("totalItemsResult", totalItemsResult);
+      
+
+//       // Get the products for the current page
+//       const products = await knex('products')
+//         .join('categories', 'products.category_id', '=', 'categories.category_id')
+//         .leftJoin('product_to_vendor', 'products.product_id', '=', 'product_to_vendor.product_id')
+//         .leftJoin('vendors', 'product_to_vendor.vendor_id', '=', 'vendors.vendor_id')
+//         .select('products.*', 'categories.category_name', 'vendors.vendor_name')
+//         .offset(offset)
+//         .limit(limit);
+
+//       // Group vendors by product
+//       const groupedProducts = products.reduce((acc, product) => {
+//         const { product_id, vendor_name, ...productData } = product;
+
+//         if (!acc[product_id]) {
+//           acc[product_id] = { ...productData, vendors: [] };
+//         }
+
+//         if (vendor_name) {
+//           acc[product_id].vendors.push(vendor_name);
+//         }
+
+//         return acc;
+//       }, {});
+
+//       // Convert the grouped products back to an array
+//       const productList = Object.values(groupedProducts);
+//       console.log("products array:", productList);
+      
+
+//       // Send the products and total count back
+//       res.json({
+//         products: productList,
+//         totalItems
+//       });
+//     } catch (error) {
+//       console.error('Error fetching products:', error);
+//       res.status(500).json({ message: 'Error fetching products' });
+//     }
+//   }
+    
+
+
+async getProducts(req, res) {
   try {
-    const products = await knex('products')
+    console.log('req.query:', req.query);
+    let { page = 1, limit = 10 } = req.query;
+
+    page = parseInt(page); // Ensure page is an integer
+    limit = parseInt(limit); // Ensure limit is an integer
+    const offset = (page - 1) * limit;
+
+    console.log('page:', page);
+    console.log('limit:', limit);
+    console.log('offset:', offset);
+
+    // Get all records with necessary joins
+    const allProducts = await knex('products')
       .join('categories', 'products.category_id', '=', 'categories.category_id')
       .leftJoin('product_to_vendor', 'products.product_id', '=', 'product_to_vendor.product_id')
       .leftJoin('vendors', 'product_to_vendor.vendor_id', '=', 'vendors.vendor_id')
-      .select('products.*', 'categories.category_name', 'categories.description', 'vendors.vendor_name')
-      .where('products.status', 1); // Assuming active products (status 1)
+      .select('products.*', 'categories.category_name', 'vendors.vendor_name');
 
     // Group vendors by product
-    const groupedProducts = products.reduce((acc, product) => {
+    const groupedProducts = allProducts.reduce((acc, product) => {
       const { product_id, vendor_name, ...productData } = product;
 
       if (!acc[product_id]) {
@@ -147,16 +233,24 @@ module.exports = {
     // Convert the grouped products back to an array
     const productList = Object.values(groupedProducts);
 
-    res.json(productList);
+    // Pagination in-memory
+    const totalItems = productList.length;
+    const paginatedProducts = productList.slice(offset, offset + limit);
+
+    console.log('products array:', paginatedProducts);
+
+    // Send the paginated products and total count back
+    res.json({
+      products: paginatedProducts,
+      totalItems,
+      totalPages: Math.ceil(totalItems / limit),
+    });
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ message: 'Error fetching products' });
   }
-},
+}
 
-  
-
-   
     
 };
 
