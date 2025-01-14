@@ -1,6 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient, HttpHeaders,HttpParams } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
+import { FormGroup, FormBuilder, Validators } from '@angular/forms';
+import * as XLSX from 'xlsx';
+
 
 @Component({
   selector: 'app-dashboard',
@@ -8,6 +11,7 @@ import { environment } from 'src/environments/environment';
   styleUrls: ['./dashboard.component.scss'],
 })
 export class DashboardComponent implements OnInit {
+
   username: string = ''; // Directly stores the username
   email: string = ''; // Directly stores the email
   thumbnail: string = ''; // Default profile picture
@@ -31,18 +35,89 @@ export class DashboardComponent implements OnInit {
 
   files: { name: string, size: string }[] = [];
   
+ isProductModalOpen: boolean = false;
+  addProductForm: FormGroup;
+  categories: any;
+  
+  selectedProducts: any[] = [];
+   allSelected: boolean = false; // Flag to track if all rows are selected
 
+ 
 
+ constructor(private http: HttpClient, private fb: FormBuilder) {
+    this.addProductForm = this.fb.group({
+      productName: ['', Validators.required],
+      category: ['', Validators.required],
+      vendor: ['', Validators.required],
+      quantity: ['', [Validators.required, Validators.min(1)]],
+      unitPrice: ['', [Validators.required, Validators.min(0)]],
+      unit: ['', Validators.required],
+    });
+  }
 
-  constructor(private http: HttpClient) {}
+ 
+
 
   ngOnInit(): void {
+    
     // Get the logged-in user's details after verifying the token
     this.fetchUserDetails();
     this.getVendorsCount();
     this.getProducts();
+
+    
+  }
+  
+  onCheckboxChange(event: any, product: any): void {
+    if (event.target.checked) {
+      this.selectedProducts.push(product);
+    } else {
+      const index = this.selectedProducts.findIndex(p => p.product_id === product.product_id);
+      if (index !== -1) {
+        this.selectedProducts.splice(index, 1);
+      }
+    }
   }
 
+onHeaderCheckboxChange(event: any): void {
+    this.allSelected = event.target.checked;
+    this.products.forEach(product => {
+      product.selected = this.allSelected;
+      if (this.allSelected) {
+        if (!this.selectedProducts.includes(product)) {
+          this.selectedProducts.push(product);
+        }
+      } else {
+        this.selectedProducts = [];
+      }
+    });
+  }
+
+  downloadExcel(): void {
+    const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet(this.selectedProducts);
+    const workbook: XLSX.WorkBook = {
+      Sheets: { 'Products': worksheet },
+      SheetNames: ['Products']
+    };
+
+    XLSX.writeFile(workbook, 'selected_products.xlsx');
+  }
+
+
+ openProductModal() {
+  this.isProductModalOpen = true;
+}
+ 
+closeProductModal() {
+  this.isProductModalOpen = false;
+}
+  onFileSelect(event:any) {
+   
+ }
+  addProduct() {
+  
+}
+  
   getVendorsCount() {
   this.http.get<{ count: number }>(`${environment.apiUrl}/auth/vendors/count`).subscribe(
     (response) => {
@@ -53,7 +128,7 @@ export class DashboardComponent implements OnInit {
     }
   );
 }
-
+  //all products 
   // getProducts() {
   //   this.http.get<any[]>(`${environment.apiUrl}/auth/products`).subscribe(
   //     (products) => {
@@ -135,7 +210,11 @@ export class DashboardComponent implements OnInit {
   openProfilePhotoModal() {
     this.isModalOpen = true; // Show modal
   }
+  openModal() {
 
+    this.isModalOpen = false;
+
+  }
   // Close the modal
   closeModal() {
     this.isModalOpen = false; // Hide modal
