@@ -24,6 +24,7 @@ export class DashboardComponent implements OnInit {
   vendorCount: number = 0; 
   products: any[] = [];
   vendors: any[] = []; 
+  categories:any[] = [];
 
 
   // Pagination
@@ -37,13 +38,10 @@ export class DashboardComponent implements OnInit {
   
  isProductModalOpen: boolean = false;
   addProductForm: FormGroup;
-  categories: any;
-  
   selectedProducts: any[] = [];
    allSelected: boolean = false; // Flag to track if all rows are selected
 
  
-
  constructor(private http: HttpClient, private fb: FormBuilder) {
     this.addProductForm = this.fb.group({
       productName: ['', Validators.required],
@@ -52,6 +50,7 @@ export class DashboardComponent implements OnInit {
       quantity: ['', [Validators.required, Validators.min(1)]],
       unitPrice: ['', [Validators.required, Validators.min(0)]],
       unit: ['', Validators.required],
+      status: ['', Validators.required],
     });
   }
 
@@ -64,8 +63,33 @@ export class DashboardComponent implements OnInit {
     this.fetchUserDetails();
     this.getVendorsCount();
     this.getProducts();
+    this.getCategories();
+    this.getVendors();
 
     
+  }
+  getCategories() {
+    this.http.get<{ categories: any[] }>(`${environment.apiUrl}/auth/categories`)
+      .subscribe(
+        (response) => {
+          this.categories = response.categories;
+        },
+        (error) => {
+          console.error('Error fetching categories:', error);
+        }
+      );
+  }
+
+  getVendors() {
+    this.http.get<{ vendors: any[] }>(`${environment.apiUrl}/auth/vendors`)
+      .subscribe(
+        (response) => {
+          this.vendors = response.vendors;
+        },
+        (error) => {
+          console.error('Error fetching vendors:', error);
+        }
+      );
   }
   
   onCheckboxChange(event: any, product: any): void {
@@ -111,12 +135,83 @@ onHeaderCheckboxChange(event: any): void {
 closeProductModal() {
   this.isProductModalOpen = false;
 }
-  onFileSelect(event:any) {
-   
- }
-  addProduct() {
-  
-}
+onFileSelect(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.selectedFile = file; // Store the selected file in the selectedFile variable
+      console.log('Selected file:', file);
+    }
+  }
+ addProduct() {
+    if (this.addProductForm.valid) {
+      const productData = this.addProductForm.value;
+
+      this.http.post(`${environment.apiUrl}/auth/products`, productData)
+        .subscribe(
+          (response: any) => {
+            console.log('Product added successfully:', response);
+            const newProduct = response.product;
+            this.products.push(newProduct); // Update the products array with the new product
+
+            if (this.selectedFile) {
+              const formData = new FormData();
+              formData.append('product_image', this.selectedFile);
+              formData.append('productId', newProduct.product_id); // Include product ID in the form data
+
+              const token = localStorage.getItem('token');
+              const headers = new HttpHeaders({
+                Authorization: `Bearer ${token}`,
+              });
+              
+              this.isUploading = true;
+
+              this.http.post(`${environment.apiUrl}/auth/upload-product-image`, formData, { headers })
+                .subscribe(
+                  (uploadResponse: any) => {
+                    console.log('File uploaded successfully:', uploadResponse);
+                    newProduct.product_image = uploadResponse.url; // Update the product image URL
+                    this.isUploading = false;
+                    this.closeProductModal();
+                    alert('Product added successfully!');
+                  },
+                  (error) => {
+                    console.error('Error uploading file:', error);
+                    this.isUploading = false;
+                  }
+                );
+            } else {
+              this.closeProductModal();
+              alert('Product added successfully!');
+            }
+          },
+
+               (error) => {
+            console.error('Error adding product:', error);
+          }
+        );
+    } else {
+      console.error('Form is invalid');
+    }
+  }
+
+
+
+
+
+   saveProductData(productData: any) {
+    this.http.post(`${environment.apiUrl}/auth/products`, productData)
+      .subscribe(
+        (response: any) => {
+          console.log('Product added successfully:', response);
+          this.products.push(response.product); // Update the products array with the new product
+          this.closeProductModal();
+        },
+        (error) => {
+          console.error('Error adding product:', error);
+        }
+      );
+  }
+
   
   getVendorsCount() {
   this.http.get<{ count: number }>(`${environment.apiUrl}/auth/vendors/count`).subscribe(

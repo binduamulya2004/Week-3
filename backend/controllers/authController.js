@@ -7,6 +7,7 @@ const sharp = require('sharp');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const vendorModel = require('../models/vendorModel');
 const productModel = require('../models/productModel');
+const categoryModel = require('../models/categoryModel');
 const knex = require('../mysql/connection');
 
 dotenv.config();
@@ -132,68 +133,6 @@ async getVendorCount(req, res) {
     }
   },
 
-//   async getProducts(req, res) {
-//     try {
-//       console.log('req.query:', req.query);
-//       let { page = 1, limit = 10 } = req.query;
-
-//       page = parseInt(page); // Ensure page is an integer
-//       limit = parseInt(limit); // Ensure limit is an integer
-//       const offset=(page-1)*limit;
-       
-//       console.log("page:", page);
-//       console.log("limit:", limit);
-//       console.log("offset:", offset);
-
-//       // Get the total count of products
-//       const totalItemsResult = await knex('products').count('* as totalItems').first();
-//       const totalItems = totalItemsResult.totalItems;
-
-//       console.log("totalItems", totalItems);
-//       console.log("totalItemsResult", totalItemsResult);
-      
-
-//       // Get the products for the current page
-//       const products = await knex('products')
-//         .join('categories', 'products.category_id', '=', 'categories.category_id')
-//         .leftJoin('product_to_vendor', 'products.product_id', '=', 'product_to_vendor.product_id')
-//         .leftJoin('vendors', 'product_to_vendor.vendor_id', '=', 'vendors.vendor_id')
-//         .select('products.*', 'categories.category_name', 'vendors.vendor_name')
-//         .offset(offset)
-//         .limit(limit);
-
-//       // Group vendors by product
-//       const groupedProducts = products.reduce((acc, product) => {
-//         const { product_id, vendor_name, ...productData } = product;
-
-//         if (!acc[product_id]) {
-//           acc[product_id] = { ...productData, vendors: [] };
-//         }
-
-//         if (vendor_name) {
-//           acc[product_id].vendors.push(vendor_name);
-//         }
-
-//         return acc;
-//       }, {});
-
-//       // Convert the grouped products back to an array
-//       const productList = Object.values(groupedProducts);
-//       console.log("products array:", productList);
-      
-
-//       // Send the products and total count back
-//       res.json({
-//         products: productList,
-//         totalItems
-//       });
-//     } catch (error) {
-//       console.error('Error fetching products:', error);
-//       res.status(500).json({ message: 'Error fetching products' });
-//     }
-//   }
-    
-
 
 async getProducts(req, res) {
   try {
@@ -249,9 +188,113 @@ async getProducts(req, res) {
     console.error('Error fetching products:', error);
     res.status(500).json({ message: 'Error fetching products' });
   }
-}
+},
 
-    
+     async addProduct(req, res, next) {
+    try {
+      const { productName, category, vendor, quantity, unitPrice, unit, status } = req.body;
+      let productImage = null;
+
+      if (req.file) {
+        // Process the image with Sharp (resize and format it)
+        const processedImage = await sharp(req.file.buffer)
+          .resize(50, 50)  // Resize to 50x50
+          .toBuffer();
+
+        // Upload image to AWS S3
+        const s3Params = {
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: `product_images/${Date.now()}_${req.file.originalname}`, // File name in S3
+          Body: processedImage,
+          ContentType: req.file.mimetype,  // This makes the image publicly accessible
+        };
+          const command = new PutObjectCommand(s3Params);
+        const s3Response = await s3.send(command);
+
+        productImage = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Params.Key}`;
+      }
+
+      // Create product data
+      const productData = {
+        product_name: productName,
+        category_id: category,
+        quantity_in_stock: quantity,
+        unit_price: unitPrice,
+        product_image: productImage,
+        status: status,
+        unit: unit,
+      };
+         // Insert product data into the database
+      const [productId] = await productModel.createProduct(productData);
+
+      // Create product-to-vendor mapping
+      const productToVendorData = {
+        product_id: productId,
+        vendor_id: vendor,
+        status: 1, // Assuming status is 1 for active
+      };
+
+      await productModel.createProductToVendor(productToVendorData);
+
+      res.status(201).json({ message: 'Product added successfully', product: { ...productData, product_id: productId } });
+    } catch (err) {
+      next(err);
+    }
+  },
+   async getCategories(req, res, next) {
+    try {
+      const categories = await categoryModel.getAllCategories();
+      res.status(200).json({ categories });
+    } catch (err) {
+      next(err);
+    }
+  },
+   async getVendors(req, res, next) {
+    try {
+      const vendors = await vendorModel.getAllVendors();
+      res.status(200).json({ vendors });
+    } catch (err) {
+      next(err);
+    }
+  },
+   
+  async uploadProductImage(req, res, next) {
+    try {
+      const { productId } = req.body; // Get product ID from request body
+      const file = req.file;  // Get file from request
+
+      if (!productId) {
+        return res.status(400).json({ message: 'Product ID is required' });
+      }
+
+      // Process the image with Sharp (resize and format it)
+      const processedImage = await sharp(file.buffer)
+        .resize(50, 50)  // Resize to 50x50
+        .toBuffer();
+
+      // Upload image to AWS S3
+      const s3Params = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: `product_images/${Date.now()}_${file.originalname}`, // File name in S3
+        Body: processedImage,
+        ContentType: file.mimetype,  // This makes the image publicly accessible
+      };
+
+      const command = new PutObjectCommand(s3Params);
+      const s3Response = await s3.send(command);
+
+      const fileUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Params.Key}`;
+
+      // Update product image URL in the database
+      await productModel.updateProduct(productId, { product_image: fileUrl });
+
+      res.status(200).json({ message: 'Product image uploaded and updated successfully!', url: fileUrl });
+    } catch (err) {
+      console.error('Error uploading product image:', err);
+      res.status(500).json({ message: 'Internal Server Error' });
+    }
+  },
+
 };
 
 

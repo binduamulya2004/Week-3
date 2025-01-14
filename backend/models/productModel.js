@@ -21,11 +21,16 @@ const updateProduct = (productId, productData) => {
 const deleteProduct = (productId) => {
     return knex('products').where('product_id', productId).del();
 };
+const createProductToVendor = (productToVendorData) => {
+  return knex('product_to_vendor').insert(productToVendorData);
+};
+
 
 module.exports = {
     getAllProducts,
     getProductById,
     createProduct,
     updateProduct,
-    deleteProduct
+    deleteProduct,
+    createProductToVendor
 };

@@ -38,3 +38,131 @@ npx knex seed:make vendors_seed
 npx knex seed:make products_seed
 npx knex seed:run 
 
+
+
+
+<!-- Add Product Modal -->
+<div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addProductModalLabel">Add Product</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="addProductForm">
+          <!-- Product Name -->
+          <div class="mb-3">
+            <label for="productName" class="form-label">Product Name</label>
+            <input type="text" id="productName" class="form-control" formControlName="productName" placeholder="Enter product name">
+          </div>
+
+          <!-- Category -->
+          <div class="mb-3">
+            <label for="category" class="form-label">Category</label>
+            <select id="category" class="form-select" formControlName="category">
+              <option *ngFor="let category of categories" [value]="category.category_id">
+                {{ category.category_name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Vendor -->
+          <div class="mb-3">
+            <label for="vendor" class="form-label">Vendor</label>
+            <select id="vendor" class="form-select" formControlName="vendor">
+              <option *ngFor="let vendor of vendors" [value]="vendor.vendor_id">
+                {{ vendor.vendor_name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Quantity -->
+          <div class="mb-3">
+            <label for="quantity" class="form-label">Quantity in Stock</label>
+            <input type="number" id="quantity" class="form-control" formControlName="quantity" placeholder="Enter quantity in stock">
+          </div>
+
+          <!-- Unit price -->
+          <div class="mb-3">
+            <label for="unitPrice" class="form-label">Unit Price</label>
+            <input type="number" id="unitPrice" class="form-control" formControlName="unitPrice" placeholder="Enter unit price" step="0.01" min="0">
+          </div>
+
+          <!-- Unit -->
+          <div class="mb-3">
+            <label for="unit" class="form-label">Unit</label>
+            <input type="text" id="unit" class="form-control" formControlName="unit" placeholder="Enter unit (e.g., kg, pcs)">
+          </div>
+
+          <!-- Status -->
+          <div class="mb-3">
+            <label for="status" class="form-label">Status</label>
+            <select id="status" class="form-select" formControlName="status">
+              <option value="1">Available</option>
+              <option value="0">Sold Out</option>
+            </select>
+          </div>
+
+          <!-- Upload Image -->
+          <div class="mb-3">
+            <label for="productImage" class="form-label">Upload Product Image</label>
+            <input type="file" id="productImage" class="form-control" (change)="onFileSelect($event)">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" (click)="addProduct()">Add Product</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Inventory Table -->
+<table class="table table-striped table-bordered table-hover mb-0">
+  <thead class="table-light">
+    <tr>
+      <th><input type="checkbox" class="form-check-input" (change)="onHeaderCheckboxChange($event)" [checked]="allSelected"></th>
+      <th>Product Name</th>
+      <th>Status</th>
+      <th>Category</th>
+      <th>Vendors</th>
+      <th>Quantity</th>
+      <th>Unit</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let product of products">
+      <td><input type="checkbox" class="form-check-input" (change)="onCheckboxChange($event, product)" [checked]="product.selected"></td>
+      <td>
+        <img [src]="product.product_image" alt="Product Image" width="50" height="50" class="me-2">
+        {{ product.product_name }}
+      </td>
+      <td>
+        <span *ngIf="product.product_status === 1" class="badge bg-success text-white">Available</span>
+        <span *ngIf="product.product_status !== 1" class="badge bg-light text-dark">Sold Out</span>
+      </td>
+      <td>{{ product.category_name }}</td>
+      <td>
+        <div *ngFor="let vendor of product.vendors">
+          <span class="badge bg-secondary">{{ vendor }}</span>
+        </div>
+      </td>
+      <td>{{ product.quantity_in_stock }}</td>
+      <td>{{ product.unit }}</td>
+      <td>
+        <button class="btn btn-sm me-2" style="border: none; background: transparent;">
+          <i class="bi bi-download"></i>
+        </button>
+        <button class="btn btn-sm me-2" style="border: none; background: transparent;">
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button class="btn btn-sm" style="border: none; background: transparent;">
+          <i class="bi bi-trash"></i>
+        </button>
+      </td>
+    </tr>
+  </tbody>
+</table>

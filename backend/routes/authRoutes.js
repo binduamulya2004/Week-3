@@ -16,7 +16,10 @@ router.post('/upload-profile-photo', jwtAuth, upload.single('profile_pic'), auth
 router.get('/vendors/count', authenticate, authController.getVendorCount);
 router.get('/products', authenticate, authController.getProducts);
 
-
+router.post('/products', upload.single('profile_pic'), authController.addProduct);
+router.get('/categories', authenticate, authController.getCategories); // New route for retrieving categories
+router.get('/vendors', authenticate, authController.getVendors); // New route for retrieving vendors
+router.post('/upload-product-image', upload.single('product_image'), authController.uploadProductImage);
 
 
 module.exports = router;
