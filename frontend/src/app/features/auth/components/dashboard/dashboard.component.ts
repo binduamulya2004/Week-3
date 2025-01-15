@@ -6,7 +6,8 @@ import * as XLSX from 'xlsx';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-
+import { jsPDF } from 'jspdf';
+import * as bootstrap from 'bootstrap';
 
 @Component({
   selector: 'app-dashboard',
@@ -14,10 +15,7 @@ import { FormsModule } from '@angular/forms';
   styleUrls: ['./dashboard.component.scss'],
 
 })
-export class DashboardComponent implements OnInit {
-downloadProduct(_t67: any) {
-throw new Error('Method not implemented.');
-}
+export class DashboardComponent implements OnInit { 
 
   username: string = ''; // Directly stores the username
   email: string = ''; // Directly stores the email
@@ -48,6 +46,9 @@ throw new Error('Method not implemented.');
   selectedProducts: any[] = [];
    allSelected: boolean = false; // Flag to track if all rows are selected
 
+  selectedProductId: number | null = null;
+  
+
  
  constructor(private http: HttpClient, private fb: FormBuilder) {
     this.addProductForm = this.fb.group({
@@ -60,6 +61,7 @@ throw new Error('Method not implemented.');
       status: ['', Validators.required],
     });
   }
+
 
  
 
@@ -75,61 +77,68 @@ throw new Error('Method not implemented.');
 
     
   }
+  
+
+  showDeleteModal(product: any) {
+    this.selectedProductId = product.product_id; // Store the product ID to delete
+    const modal = new bootstrap.Modal(
+      document.getElementById('deleteConfirmationModal')!
+    );
+    modal.show();
+  }
+   // Confirm delete logic
+   // Confirm the deletion of the product
+  confirmDelete() {
+    if (this.selectedProductId) {
+      this.http.delete(`${environment.apiUrl}/auth/products/${this.selectedProductId}`).subscribe(
+    
+        (response: any) => {
+          alert(response.message); // Success message from the backend
+          // Update the UI to reflect the deletion
+          this.getProducts();
+        },
+        (error) => {
+          alert('Failed to delete the product');
+          console.error(error);
+        }
+      );
+    }
+
+    // Close the modal after the operation
+    const modal = bootstrap.Modal.getInstance(
+      document.getElementById('deleteConfirmationModal')!
+    );
+    modal?.hide();
+  }
+
+  
+
+
+
+  downloadProduct(product: any) {
+    const doc = new jsPDF();
+
+    // Extract product details excluding image
+    const { product_id, product_name, price, description, vendor_name } = product;
+
+    // Add product details to the PDF
+    doc.text('Product Details', 20, 20);
+    doc.text(`Product ID: ${product_id}`, 20, 30);
+    doc.text(`Product Name: ${product_name}`, 20, 40);
+    doc.text(`Price: ${price}`, 20, 50);
+    doc.text(`Description: ${description}`, 20, 60);
+    doc.text(`Vendor: ${vendor_name}`, 20, 70);
+    // Save the PDF
+    doc.save(`${product_name}_${product_id}.pdf`);
+  }
+
+
   editProduct(product: any) {
   product.isEditing = true;
   product.originalData = { ...product }; // Store original data in case of cancel
   }
-  
-//   saveProduct(product: any) {
-//   const updatedProductData = {
-//     product_name: product.product_name,
-//     category_id: product.category_id,
-//     quantity_in_stock: product.quantity_in_stock,
-//     unit_price: product.unit_price,
-//     product_image: product.product_image,
-//     status: product.product_status,
-//     unit: product.unit,
-//     vendor_id: product.vendor_id, // Include vendor ID
-//   };
  
-//     console.log('Updated product data:', updatedProductData);
-//   this.http.put(`${environment.apiUrl}/auth/products/${product.product_id}`, updatedProductData)
-//     .subscribe(
-//       (response: any) => {
-//         console.log('Product updated successfully:', response);
-//         product.isEditing = false;
 
-//         if (product.selectedFile) {
-//           const formData = new FormData();
-//           formData.append('product_image', product.selectedFile);
-//           formData.append('productId', product.product_id); // Include product ID in the form data
-
-//           const token = localStorage.getItem('token');
-//           const headers = new HttpHeaders({
-//             Authorization: `Bearer ${token}`,
-//           });
-
-//           this.isUploading = true;
-
-//           this.http.post(`${environment.apiUrl}/auth/upload-product-image`, formData, { headers })
-//             .subscribe(
-//               (uploadResponse: any) => {
-//                 console.log('File uploaded successfully:', uploadResponse);
-//                 product.product_image = uploadResponse.url; // Update the product image URL
-//                 this.isUploading = false;
-//               },
-//               (error) => {
-//                 console.error('Error uploading file:', error);
-//                 this.isUploading = false;
-//               }
-//             );
-//         }
-//       },
-//       (error) => {
-//         console.error('Error updating product:', error);
-//       }
-//     );
-// }
 saveProduct(product: any) {
   const updatedProductData = {
     product_id:product.product_id,
