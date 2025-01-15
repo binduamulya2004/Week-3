@@ -20,6 +20,7 @@ router.post('/products', upload.single('profile_pic'), authController.addProduct
 router.get('/categories', authenticate, authController.getCategories); // New route for retrieving categories
 router.get('/vendors', authenticate, authController.getVendors); // New route for retrieving vendors
 router.post('/upload-product-image', upload.single('product_image'), authController.uploadProductImage);
+router.put('/products/:productId', upload.single('product_image'), authController.updateProduct);
 
 
 module.exports = router;

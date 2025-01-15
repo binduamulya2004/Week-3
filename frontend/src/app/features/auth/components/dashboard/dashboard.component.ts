@@ -3,14 +3,21 @@ import { HttpClient, HttpHeaders,HttpParams } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
 import * as XLSX from 'xlsx';
+import { NgModule } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
+
 })
 export class DashboardComponent implements OnInit {
+downloadProduct(_t67: any) {
+throw new Error('Method not implemented.');
+}
 
   username: string = ''; // Directly stores the username
   email: string = ''; // Directly stores the email
@@ -68,6 +75,124 @@ export class DashboardComponent implements OnInit {
 
     
   }
+  editProduct(product: any) {
+  product.isEditing = true;
+  product.originalData = { ...product }; // Store original data in case of cancel
+  }
+  
+//   saveProduct(product: any) {
+//   const updatedProductData = {
+//     product_name: product.product_name,
+//     category_id: product.category_id,
+//     quantity_in_stock: product.quantity_in_stock,
+//     unit_price: product.unit_price,
+//     product_image: product.product_image,
+//     status: product.product_status,
+//     unit: product.unit,
+//     vendor_id: product.vendor_id, // Include vendor ID
+//   };
+ 
+//     console.log('Updated product data:', updatedProductData);
+//   this.http.put(`${environment.apiUrl}/auth/products/${product.product_id}`, updatedProductData)
+//     .subscribe(
+//       (response: any) => {
+//         console.log('Product updated successfully:', response);
+//         product.isEditing = false;
+
+//         if (product.selectedFile) {
+//           const formData = new FormData();
+//           formData.append('product_image', product.selectedFile);
+//           formData.append('productId', product.product_id); // Include product ID in the form data
+
+//           const token = localStorage.getItem('token');
+//           const headers = new HttpHeaders({
+//             Authorization: `Bearer ${token}`,
+//           });
+
+//           this.isUploading = true;
+
+//           this.http.post(`${environment.apiUrl}/auth/upload-product-image`, formData, { headers })
+//             .subscribe(
+//               (uploadResponse: any) => {
+//                 console.log('File uploaded successfully:', uploadResponse);
+//                 product.product_image = uploadResponse.url; // Update the product image URL
+//                 this.isUploading = false;
+//               },
+//               (error) => {
+//                 console.error('Error uploading file:', error);
+//                 this.isUploading = false;
+//               }
+//             );
+//         }
+//       },
+//       (error) => {
+//         console.error('Error updating product:', error);
+//       }
+//     );
+// }
+saveProduct(product: any) {
+  const updatedProductData = {
+    product_name: product.product_name,
+    category_id: product.category_id,
+    quantity_in_stock: product.quantity_in_stock,
+    unit_price: product.unit_price,
+    product_image: product.product_image,
+    status: product.product_status,
+    unit: product.unit,
+    vendor_id: product.vendor_id, // Include vendor ID
+  };
+
+  console.log('Updated product data:', updatedProductData);
+  this.http.put(`${environment.apiUrl}/auth/products/${product.product_id}`, updatedProductData)
+    .subscribe(
+      (response: any) => {
+        console.log('Product updated successfully:', response);
+        product.isEditing = false;
+
+        if (product.selectedFile) {
+          const formData = new FormData();
+          formData.append('product_image', product.selectedFile);
+          formData.append('productId', product.product_id); // Include product ID in the form data
+
+          const token = localStorage.getItem('token');
+          const headers = new HttpHeaders({
+            Authorization: `Bearer ${token}`,
+          });
+
+          this.isUploading = true;
+
+          this.http.post(`${environment.apiUrl}/auth/upload-product-image`, formData, { headers })
+            .subscribe(
+              (uploadResponse: any) => {
+                console.log('File uploaded successfully:', uploadResponse);
+                product.product_image = uploadResponse.url; // Update the product image URL
+                this.isUploading = false;
+              },
+              (error) => {
+                console.error('Error uploading file:', error);
+                this.isUploading = false;
+              }
+            );
+        }
+      },
+      (error) => {
+        console.error('Error updating product:', error);
+      }
+    );
+}
+
+onFileSelectPro(event: any, product: any) {
+  const file = event.target.files[0];
+  if (file) {
+    product.selectedFile = file; // Store the selected file in the product object
+    console.log('Selected file:', file);
+  }
+}
+
+cancelEdit(product: any) {
+  Object.assign(product, product.originalData); // Restore original data
+  product.isEditing = false;
+}
   getCategories() {
     this.http.get<{ categories: any[] }>(`${environment.apiUrl}/auth/categories`)
       .subscribe(
@@ -244,6 +369,7 @@ onFileSelect(event: any) {
     this.http.get<{ products: any[], totalItems: number }>(`${environment.apiUrl}/auth/products`, { params })
       .subscribe(
         (response) => {
+          console.log("products -", response)
           this.products = response.products;
           this.totalItems = response.totalItems;
           this.totalPages = Math.ceil(this.totalItems / this.itemsPerPage);

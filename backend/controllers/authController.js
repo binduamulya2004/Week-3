@@ -9,6 +9,9 @@ const vendorModel = require('../models/vendorModel');
 const productModel = require('../models/productModel');
 const categoryModel = require('../models/categoryModel');
 const knex = require('../mysql/connection');
+const productToVendorModel = require('../models/productToVendor');
+
+
 
 dotenv.config();
 
@@ -111,7 +114,7 @@ module.exports = {
       next(err);
     }
   },
-   async getVendorCount(req, res) {
+  async getVendorCount(req, res) {
     try {
       const count = await knex('vendors').count('vendor_id as count').first();
       res.json({ count: count.count });
@@ -123,7 +126,7 @@ module.exports = {
 
 
 
-async getVendorCount(req, res) {
+  async getVendorCount(req, res) {
     try {
       const count = await knex('vendors').count('vendor_id as count').first();
       res.json({ count: count.count });
@@ -134,63 +137,63 @@ async getVendorCount(req, res) {
   },
 
 
-async getProducts(req, res) {
-  try {
-    console.log('req.query:', req.query);
-    let { page = 1, limit = 10 } = req.query;
+  async getProducts(req, res) {
+    try {
+      console.log('req.query:', req.query);
+      let { page = 1, limit = 10 } = req.query;
 
-    page = parseInt(page); // Ensure page is an integer
-    limit = parseInt(limit); // Ensure limit is an integer
-    const offset = (page - 1) * limit;
+      page = parseInt(page); // Ensure page is an integer
+      limit = parseInt(limit); // Ensure limit is an integer
+      const offset = (page - 1) * limit;
 
-    console.log('page:', page);
-    console.log('limit:', limit);
-    console.log('offset:', offset);
+      console.log('page:', page);
+      console.log('limit:', limit);
+      console.log('offset:', offset);
 
-    // Get all records with necessary joins
-    const allProducts = await knex('products')
-      .join('categories', 'products.category_id', '=', 'categories.category_id')
-      .leftJoin('product_to_vendor', 'products.product_id', '=', 'product_to_vendor.product_id')
-      .leftJoin('vendors', 'product_to_vendor.vendor_id', '=', 'vendors.vendor_id')
-      .select('products.*', 'categories.category_name', 'vendors.vendor_name');
+      // Get all records with necessary joins
+      const allProducts = await knex('products')
+        .join('categories', 'products.category_id', '=', 'categories.category_id')
+        .leftJoin('product_to_vendor', 'products.product_id', '=', 'product_to_vendor.product_id')
+        .leftJoin('vendors', 'product_to_vendor.vendor_id', '=', 'vendors.vendor_id')
+        .select('products.*', 'categories.category_name', 'vendors.vendor_name');
 
-    // Group vendors by product
-    const groupedProducts = allProducts.reduce((acc, product) => {
-      const { product_id, vendor_name, ...productData } = product;
+      // Group vendors by product
+      const groupedProducts = allProducts.reduce((acc, product) => {
+        const { product_id, vendor_name, ...productData } = product;
 
-      if (!acc[product_id]) {
-        acc[product_id] = { ...productData, vendors: [] };
-      }
+        if (!acc[product_id]) {
+          acc[product_id] = { ...product, vendors: [] };
+        }
 
-      if (vendor_name) {
-        acc[product_id].vendors.push(vendor_name);
-      }
+        if (vendor_name) {
+          acc[product_id].vendors.push(vendor_name);
+        }
 
-      return acc;
-    }, {});
+        return acc;
+      }, {});
 
-    // Convert the grouped products back to an array
-    const productList = Object.values(groupedProducts);
+      // Convert the grouped products back to an array
+      const productList = Object.values(groupedProducts);
 
-    // Pagination in-memory
-    const totalItems = productList.length;
-    const paginatedProducts = productList.slice(offset, offset + limit);
+      // Pagination in-memory
+      const totalItems = productList.length;
+      const paginatedProducts = productList.slice(offset, offset + limit);
 
-    console.log('products array:', paginatedProducts);
+      console.log('products array:', paginatedProducts);
 
-    // Send the paginated products and total count back
-    res.json({
-      products: paginatedProducts,
-      totalItems,
-      totalPages: Math.ceil(totalItems / limit),
-    });
-  } catch (error) {
-    console.error('Error fetching products:', error);
-    res.status(500).json({ message: 'Error fetching products' });
-  }
-},
+      // Send the paginated products and total count back
+      res.json({
+        products: paginatedProducts,
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+      });
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      res.status(500).json({ message: 'Error fetching products' });
+    }
+  },
 
-     async addProduct(req, res, next) {
+  async addProduct(req, res, next) {
     try {
       const { productName, category, vendor, quantity, unitPrice, unit, status } = req.body;
       let productImage = null;
@@ -208,7 +211,7 @@ async getProducts(req, res) {
           Body: processedImage,
           ContentType: req.file.mimetype,  // This makes the image publicly accessible
         };
-          const command = new PutObjectCommand(s3Params);
+        const command = new PutObjectCommand(s3Params);
         const s3Response = await s3.send(command);
 
         productImage = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Params.Key}`;
@@ -224,7 +227,7 @@ async getProducts(req, res) {
         status: status,
         unit: unit,
       };
-         // Insert product data into the database
+      // Insert product data into the database
       const [productId] = await productModel.createProduct(productData);
 
       // Create product-to-vendor mapping
@@ -241,7 +244,7 @@ async getProducts(req, res) {
       next(err);
     }
   },
-   async getCategories(req, res, next) {
+  async getCategories(req, res, next) {
     try {
       const categories = await categoryModel.getAllCategories();
       res.status(200).json({ categories });
@@ -249,7 +252,7 @@ async getProducts(req, res) {
       next(err);
     }
   },
-   async getVendors(req, res, next) {
+  async getVendors(req, res, next) {
     try {
       const vendors = await vendorModel.getAllVendors();
       res.status(200).json({ vendors });
@@ -295,7 +298,92 @@ async getProducts(req, res) {
     }
   },
 
+
+// Update product method
+async updateProduct(req, res, next) {
+  try {
+    const { productId } = req.params;
+    const productData = req.body;
+    console.log(productData, 'productData');
+
+    const productObj = JSON.parse(JSON.stringify(productData))
+    delete productObj.vendor_id
+    console.log(productObj)
+    // Start a transaction
+    await knex.transaction(async (trx) => {
+      // Update product data in the products table
+      await trx('products').where('product_id', productId).update(productObj);
+
+      // Handle image upload if a file is provided
+      if (req.file) {
+        const file = req.file;
+
+        // Process the image with Sharp (resize and format it)
+        const processedImage = await sharp(file.buffer)
+          .resize(50, 50)  // Resize to 50x50
+          .toBuffer();
+
+        // Upload image to AWS S3
+        const s3Params = {
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: `product_images/${Date.now()}_${file.originalname}`, // File name in S3
+          Body: processedImage,
+          ContentType: file.mimetype,  // This makes the image publicly accessible
+        };
+
+        const command = new PutObjectCommand(s3Params);
+        await s3.send(command);
+
+        const fileUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Params.Key}`;
+
+        // Update product image URL in the database
+        await trx('products').where('product_id', productId).update({ product_image: fileUrl });
+      }
+
+      // Update product-to-vendor mapping if vendor_id has changed
+      if (productData.vendor_id) {
+        const productToVendorData = {
+          product_id: productData.product_id,
+          vendor_id: productData.vendor_id,
+          status: 1, // Assuming status is 1 for active
+        };
+        // await trx('product_to_vendor').where('product_id', productId).update(productToVendorData);
+        // await trx('product_to_vendor').insert(productToVendorData);
+        await trx('product_to_vendor')
+        .insert(productToVendorData)
+        .onConflict(['product_id', 'vendor_id']) // Specify the unique key(s)
+        .merge();
+        // Update vendor_id in the products table
+        // await trx('products').where('product_id', productId).update({ vendor_id: productData.vendor_id });
+      }
+
+      // Update category if necessary
+      if (productData.category_id) {
+        await trx('categories')
+          .where('category_id', productData.category_id)
+          .update({ status: 1 }); // Assuming `status: 1` means active
+
+        // Update category_id in the products table
+        await trx('products').where('product_id', productId).update({ category_id: productData.category_id });
+      }
+
+      // Update vendors if vendor data is passed
+      if (productData.vendor_id) {
+        const vendorData = {
+          vendor_name: productData.vendor_name, // Assuming this field exists
+          status: 1, // Example of updating vendor status
+        };
+        await trx('vendors').where('vendor_id', productData.vendor_id).update(vendorData);
+      }
+    });
+
+    res.status(200).json({ message: 'Product updated successfully' });
+  } catch (err) {
+    console.error('Error updating product:', err);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+}
+
+
+
 };
-
-
-
