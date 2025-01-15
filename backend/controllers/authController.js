@@ -155,7 +155,8 @@ module.exports = {
         .join('categories', 'products.category_id', '=', 'categories.category_id')
         .leftJoin('product_to_vendor', 'products.product_id', '=', 'product_to_vendor.product_id')
         .leftJoin('vendors', 'product_to_vendor.vendor_id', '=', 'vendors.vendor_id')
-        .select('products.*', 'categories.category_name', 'vendors.vendor_name');
+        .select('products.*', 'categories.category_name', 'vendors.vendor_name')
+        .where('products.status', 1); 
 
       // Group vendors by product
       const groupedProducts = allProducts.reduce((acc, product) => {
@@ -406,7 +407,41 @@ async updateProduct(req, res, next) {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 }
+  ,
 
+
+
+// Controller to soft delete product
+  async deleteProduct(req, res, next) {
+    console.log("******")
+    const { productId } = req.params; // Get the product ID from request parameters
+    console.log(productId, 'productId');
+
+  try {
+    // Start a transaction for atomic updates
+    await knex.transaction(async (trx) => {
+      // Update status in `products` table
+      await trx('products')
+        .where('product_id', productId)
+        .update({ status: 99 });
+
+      // Update status in `product_to_vendor` table
+      await trx('product_to_vendor')
+        .where('product_id', productId)
+        .update({ status: 99 });
+    });
+
+    // Send success response
+    return res
+      .status(200)
+      .json({ message: 'Product and related vendors deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    return res
+      .status(500)
+      .json({ message: 'Failed to delete product', error: error.message });
+  }
+},
 
 
 };

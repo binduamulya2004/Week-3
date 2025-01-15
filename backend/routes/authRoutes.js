@@ -22,6 +22,7 @@ router.get('/vendors', authenticate, authController.getVendors); // New route fo
 router.post('/upload-product-image', upload.single('product_image'), authController.uploadProductImage);
 router.put('/products/:productId', upload.single('product_image'), authController.updateProduct);
 
+router.delete('/products/:productId', authController.deleteProduct);
 
 module.exports = router;
 

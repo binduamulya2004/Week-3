@@ -40,3 +40,4 @@ npx knex seed:run
 
 
 
+npm install jspdf
