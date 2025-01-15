@@ -347,14 +347,37 @@ async updateProduct(req, res, next) {
           vendor_id: productData.vendor_id,
           status: 1, // Assuming status is 1 for active
         };
+
+         const existing = await trx('product_to_vendor')
+          .where('product_id', productData.product_id)
+          .andWhere('vendor_id', productData.vendor_id)
+          .first();
+
+          if (existing) {
+            // If the relationship already exists, update the status and timestamps
+            await trx('product_to_vendor')
+              .where('id', existing.id) // Use the primary key to locate the record
+              .update({
+                status: 1, // Set the status to active
+                updated_at: trx.fn.now(), // Update the timestamp
+              });
+          } else {
+            // If it's a new vendor for the product, insert a new row
+            await trx('product_to_vendor').insert(productToVendorData);
+          }
+
+
+        // await trx('product_to_vendor').insert(productToVendorData);
+        
         // await trx('product_to_vendor').where('product_id', productId).update(productToVendorData);
         // await trx('product_to_vendor').insert(productToVendorData);
-        await trx('product_to_vendor')
-        .insert(productToVendorData)
-        .onConflict(['product_id', 'vendor_id']) // Specify the unique key(s)
-        .merge();
+        // await trx('product_to_vendor')
+        // .insert(productToVendorData)
+        // .onConflict(['product_id', 'vendor_id']) // Specify the unique key(s)
+        // .merge();
         // Update vendor_id in the products table
         // await trx('products').where('product_id', productId).update({ vendor_id: productData.vendor_id });
+       
       }
 
       // Update category if necessary

@@ -132,6 +132,7 @@ throw new Error('Method not implemented.');
 // }
 saveProduct(product: any) {
   const updatedProductData = {
+    product_id:product.product_id,
     product_name: product.product_name,
     category_id: product.category_id,
     quantity_in_stock: product.quantity_in_stock,
