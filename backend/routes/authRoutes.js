@@ -21,8 +21,15 @@ router.get('/categories', authenticate, authController.getCategories); // New ro
 router.get('/vendors', authenticate, authController.getVendors); // New route for retrieving vendors
 router.post('/upload-product-image', upload.single('product_image'), authController.uploadProductImage);
 router.put('/products/:productId', upload.single('product_image'), authController.updateProduct);
-
 router.delete('/products/:productId', authController.deleteProduct);
+
+
+//cart routes
+router.post('/move-to-cart',authenticate, authController.moveToCart);
+router.get('/cart', authenticate, authController.getCartItems);
+router.post('/cart/update', authenticate, authController.updateCartItemQuantity);
+router.delete('/delete-cart-item/:cartId', authenticate, authController.deleteCartItem);
+
 
 module.exports = router;
 

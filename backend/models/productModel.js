@@ -7,7 +7,7 @@ const getAllProducts = () => {
 };
 
 const getProductById = (productId) => {
-    return knex('products').where('product_id', productId).first();
+  return knex('products').where('product_id', productId).first();
 };
 
 const createProduct = (productData) => {

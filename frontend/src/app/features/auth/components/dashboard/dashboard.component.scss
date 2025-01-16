@@ -150,3 +150,66 @@
     border: none;
     font-size: 20px;
 }
+.filter-dropdown {
+    position: relative;
+}
+
+.filter-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background-color: white;
+    box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    padding: 10px;
+    z-index: 1000;
+}
+
+.filter-header h6 {
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.filter-options {
+    display: flex;
+    flex-direction: column;
+    /* Ensures the options are displayed in a column */
+    gap: 10px;
+    /* Adds space between each option */
+}
+
+.form-options {
+    display: flex;
+    align-items: center;
+}
+
+.form-check-input {
+    margin-right: 5px;
+}
+
+.filter-dropdown button {
+    height: 38px;
+
+    background-color:#8a2be2;
+}
+.searchTerm{
+
+}
+.filter-group {
+  .btn {
+    padding: 4px 12px;
+    font-size: 13px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+   
+    &.active {
+      background: #f8f9fa;
+      border-color: #e0e0e0;
+    }
+   
+    &:hover {
+      background: #f8f9fa;
+    }
+  }
+}
