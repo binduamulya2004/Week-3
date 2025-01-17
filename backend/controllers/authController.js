@@ -423,7 +423,7 @@ module.exports = {
       const productData = req.body;
       console.log(productData, 'productData');
 
-      const productObj = JSON.parse(JSON.stringify(productData))
+      const productObj = JSON.parse(JSON.stringify(productData))//deep copy of the original obj
       delete productObj.vendor_id
       console.log(productObj)
       // Start a transaction
@@ -606,7 +606,6 @@ module.exports = {
     }
   },
 
-  // cart controllers
   async  getCartItems(req, res) {
   try {
     const { page = 1, limit = 5 } = req.query;
@@ -649,16 +648,6 @@ module.exports = {
   .where('carts.user_id', userId)  // Replace userId with the actual user ID or a parameter
   .andWhere('carts.quantity', '>', 0) // Ensure quantity is greater than 0
   .andWhere('products.status', '=', 1) // Ensure the product is available
-  .groupBy(
-    'carts.id',
-    'products.product_id',
-    'products.product_name',
-    'products.product_image',
-    'categories.category_name',
-    'vendors.vendor_name',
-    'carts.quantity',
-    'products.quantity_in_stock'
-  )
   .limit(limit) // Limit the number of results
   .offset(offset) // Offset the results for pagination
   .debug(); // Debugging to see the SQL query
@@ -679,7 +668,7 @@ module.exports = {
       return res.status(404).json({ success: false, message: 'No cart items found for this user' });
     }
 
-    console.log(products, 'products');
+    //console.log(products, 'products');
 
     res.json({
       success: true,
@@ -815,8 +804,10 @@ module.exports = {
 
       // Commit the transaction
       await trx.commit();
+      alert("Cart item deleted successfully");
 
       return res.status(200).json({ message: 'Cart item deleted successfully' });
+      
     } catch (error) {
       // Rollback the transaction in case of an error
       await trx.rollback();

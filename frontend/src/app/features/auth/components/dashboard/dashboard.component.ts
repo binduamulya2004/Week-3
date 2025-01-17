@@ -104,6 +104,7 @@ export class DashboardComponent implements OnInit {
     this.getVendors();
     this.fetchCartPage(this.currentCartPage);
   }
+
   toggleTable(view: string): void {
     if (view === 'cart') {
       this.showCart = true;
@@ -112,8 +113,6 @@ export class DashboardComponent implements OnInit {
       this.flag = 1;
     }
   }
-
-  //  }>(`${environment.apiUrl}/auth/cart`, { params })
 
   fetchCartPage(page: number): void {
     if (page < 1 || (this.totalCartPages && page > this.totalCartPages)) return;
@@ -364,7 +363,7 @@ export class DashboardComponent implements OnInit {
     );
     modal.show();
   }
-  // Confirm delete logic
+
   // Confirm the deletion of the product
   confirmDelete() {
     if (this.selectedProductId) {

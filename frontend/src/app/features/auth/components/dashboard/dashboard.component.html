@@ -54,10 +54,10 @@
 
 <!-- complete table -->
 
-<div class="container mt-4">
+<div class="container mt-4 mb-5 border">
     <div class="row">
         <!-- Left side of the dashboard -->
-        <div class="col-md-10">
+        <div class="col-md-10 border" >
             <div class="bg-white p-4 rounded shadow-sm">
                 <!-- Inventory Header Section -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -73,7 +73,7 @@
 
                         <!-- Action Buttons -->
                         <div>
-                            <button class="btn btn-outline-primary me-2" data-bs-toggle="modal"
+                            <button class="btn btn-outline-primary me-2 btn-violet" data-bs-toggle="modal"
                                 data-bs-target="#moveToModal">
                                 <i class="bi bi-arrow-right-circle"></i> Move To
                             </button>
@@ -85,7 +85,7 @@
                                 data-bs-target="#importModal">
                                 <i class="bi bi-upload"></i> Import
                             </button>
-                            <button class="btn btn-primary me-2" data-bs-toggle="modal"
+                            <button class="btn btn-primary me-2  btn-violet" data-bs-toggle="modal"
                                 data-bs-target="#addProductModal">
                                 <i class="bi bi-plus-circle"></i> Add Product
                             </button>
@@ -122,9 +122,9 @@
 
                 <!-- View and Cart Buttons -->
                 <div class="d-flex mb-3">
-                    <button class="btn" [ngClass]="{'btn-primary': !showCart, 'btn-outline-secondary': showCart}"
+                    <button class="btn"  [ngClass]="{'btn-violet': !showCart, 'btn-outline-secondary': showCart}"
                         (click)="toggleTable('all')">View All</button>
-                    <button class="btn" [ngClass]="{'btn-primary': showCart, 'btn-outline-secondary': !showCart}"
+                    <button class="btn" [ngClass]="{'btn-violet': showCart, 'btn-outline-secondary': !showCart}"
                         (click)="toggleTable('cart')">Cart</button>
                 </div>
 
