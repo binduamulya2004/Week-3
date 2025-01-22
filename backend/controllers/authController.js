@@ -15,6 +15,10 @@ const { log, Console } = require('console');
 const { zipFiles } = require('./zipUtils');
 const archiver = require('archiver');
 const { decryptMiddleware, encryptMiddleware } = require('../middleware/jwt/cryptoMiddleware');
+
+const refreshTokenModel = require('../models/refreshTokenModel');
+
+
 dotenv.config();
 
 const s3 = new S3Client({
@@ -43,6 +47,16 @@ async function uploadToS3(fileBuffer, fileName, mimeType, userId) {
   }
 }
 
+function generateAccessToken(user) {
+  return jwt.sign({ id: user.user_id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '15m' });
+}
+
+function generateRefreshToken(user) {
+  return jwt.sign({ id: user.user_id, email: user.email }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+}
+
+
+
 
 module.exports = {
   async signup(req, res, next) {
@@ -68,20 +82,73 @@ module.exports = {
     }
   },
 
+  // async login(req, res, next) {
+  //   console.log("******");
+  //   try {
+  //     console.log(req.body, 'req.body');
+  //     const { email, password } = req.body;
+  //     const user = await userModel.findByEmail(email);
+  //     if (!user) return res.status(404).json({ message: 'User not found' });
+
+  //     const isValidPassword = await bcrypt.compare(password, user.password);
+  //     console.log('isValidPassword:', isValidPassword);
+  //     if (!isValidPassword) return res.status(401).json({ message: 'Invalid credentials' });
+
+  //     const token = jwt.sign({ id: user.user_id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  //     res.status(200).json({ token, user });
+  //   } catch (err) {
+  //     next(err);
+  //   }
+  // },
+
+
   async login(req, res, next) {
-    console.log("******");
     try {
-      console.log(req.body, 'req.body');
       const { email, password } = req.body;
       const user = await userModel.findByEmail(email);
-      if (!user) return res.status(404).json({ message: 'User not found' });
+      if (!user) return res.status(400).json({ message: 'Invalid email or password' });
 
       const isValidPassword = await bcrypt.compare(password, user.password);
-      console.log('isValidPassword:', isValidPassword);
-      if (!isValidPassword) return res.status(401).json({ message: 'Invalid credentials' });
+      if (!isValidPassword) return res.status(400).json({ message: 'Invalid email or password' });
 
-      const token = jwt.sign({ id: user.user_id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-      res.status(200).json({ token, user });
+      const accessToken = generateAccessToken(user);
+      const refreshToken = generateRefreshToken(user);
+
+      // Store refresh token in the database
+      await refreshTokenModel.storeRefreshToken(user.user_id, refreshToken);
+
+      res.status(200).json({ accessToken, refreshToken, user });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  
+  async refreshToken(req, res, next) {
+    const { token } = req.body;
+    if (!token) return res.status(401).json({ message: 'Refresh token is required' });
+
+    try {
+      const storedToken = await refreshTokenModel.findRefreshToken(token);
+      if (!storedToken) return res.status(403).json({ message: 'Invalid refresh token' });
+
+      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+      const user = await userModel.findById(decoded.id);
+      if (!user) return res.status(404).json({ message: 'User not found' });
+
+      const accessToken = generateAccessToken(user);
+      res.status(200).json({ accessToken });
+    } catch (err) {
+      res.status(403).json({ message: 'Invalid or expired refresh token' });
+    }
+  },
+  async logout(req, res, next) {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: 'Refresh token is required' });
+
+    try {
+      await refreshTokenModel.deleteRefreshToken(token);
+      res.status(200).json({ message: 'Logged out successfully' });
     } catch (err) {
       next(err);
     }

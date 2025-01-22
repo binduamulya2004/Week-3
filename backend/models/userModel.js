@@ -20,4 +20,19 @@ module.exports = {
   async updateProfilePic(email, url) {
     return db('users').where({ email }).update({ profile_pic: url });
   },
+  async findById(id) {
+    return knex('users').where({ user_id: id }).first();
+  },
+
+  async storeRefreshToken(userId, refreshToken) {
+    return knex('refresh_tokens').insert({ user_id: userId, token: refreshToken });
+  },
+
+  async getRefreshToken(userId) {
+    return knex('refresh_tokens').where({ user_id: userId }).first();
+  },
+
+  async deleteRefreshToken(userId) {
+    return knex('refresh_tokens').where({ user_id: userId }).del();
+  },
 };

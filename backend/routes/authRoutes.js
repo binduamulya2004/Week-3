@@ -11,6 +11,11 @@ const upload = multer({ storage: storage });
 
 router.post('/signup', authController.signup);
 router.post('/login', authController.login);
+router.post('/refresh-token', authController.refreshToken);
+router.post('/logout', authController.logout);
+
+
+
 router.get('/user-details', authenticate, authController.getUserDetails);
 router.post('/upload-profile-photo', jwtAuth, upload.single('profile_pic'), authController.uploadProfilePhoto);
 router.get('/vendors/count', authenticate, authController.getVendorCount);
