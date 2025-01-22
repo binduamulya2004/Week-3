@@ -81,10 +81,14 @@
                                 [disabled]="selectedProducts.length === 0">
                                 <i class="bi bi-download"></i> Download All
                             </button>
-                            <button class="btn btn-outline-violet me-2" data-bs-toggle="modal"
+                            <!-- <button class="btn btn-outline-violet me-2" data-bs-toggle="modal"
                                 data-bs-target="#importModal">
                                 <i class="bi bi-upload"></i> Import
+                            </button> -->
+                            <button class="btn btn-outline-violet me-2" data-bs-toggle="modal" data-bs-target="#importModal">
+                                <i class="bi bi-upload"></i> Import
                             </button>
+
                             <button class="btn btn-primary me-2  btn-violet" data-bs-toggle="modal"
                                 data-bs-target="#addProductModal">
                                 <i class="bi bi-plus-circle"></i> Add Product
@@ -296,36 +300,35 @@
         <!-- Right side of the dashboard -->
         <div class="col-md-2 mt-4">
             <div class="card-header bg-white">
-            
-                <h5 class="mb-2">Files uploaded</h5>
+                <div class="files-upload-container">
+                    <h5>Files Uploaded</h5>
+                    <div class="action-buttons d-flex mb-2">
+                        <button class="btn btn-outline-primary me-2 btn-violet btn-sm"  (click)="downloadAllFile()">Download All</button>
+                        <br>
+                        <button class="btn btn-outline-primary me-2 btn-violet btn-sm" (click)="openModalFile()">Upload</button>
+                    </div>
                 
-            
-            
-                <div class="d-flex justify-content-start mt-2">
-                    <button class="btn btn-outline-secondary btn-sm me-2">Download all</button>
-            
-                    <button class="btn btn-primary btn-sm d-flex align-items-center" class="da">
-                        <i class="bi bi-upload me-2"></i><span>Upload</span>
-                    </button>
-                </div>
-                <div class="list-group list-group-flush">
-                    <div *ngFor="let file of files" class="list-group-item d-flex align-items-center">
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input">
+                    <div class="file-list">
+                        <div *ngFor="let file of uploadedFiles">
+                            <input type="checkbox" id="{{ file.name }}" (change)="toggleFileSelection(file.name)" />
+                            <label for="{{ file.name }}">{{ file.name }}</label>
+                            <small class="text-muted">{{ file.size }} bytes</small>
                         </div>
-                
-                        <i class="bi bi-file-earmark-text mx-3"></i>
-                        <div class="flex-grow-1">
-                            <div>{{ file.name }}</div>
-                            <small class="text-muted">{{ file.size }}</small>
-                        </div>
-                
-                
                     </div>
                 </div>
+                
+                <div class="modal" *ngIf="isModalOpen">
+                    <div class="modal-content">
+                        <input type="file" (change)="onFileChange($event)" />
+                        <button (click)="uploadFiles()" data-bs-toggle="modal" dats-bs-target="#profilePictureModal">Upload</button>
+                        <button (click)="closeModalFile()">Cancel</button>
+                    </div>
+                </div>
+            
+                
             </div>
-
         </div>
+        
     </div>
 </div>
 
@@ -507,23 +510,75 @@
     </div>
 </div>
 
-<!-- Modal for imports  -->
-<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+
+<!-- Modal for File upload right side  -->
+<div class="modal fade" id="profilePictureModal" tabindex="-1" aria-labelledby="profilePictureModalLabel"
+    [ngClass]="{ 'show': isModalOpen }" style="backdrop-filter: blur(5px);background: rgba(0, 0, 0, 0.7);"
+    [style.display]="isModalOpen ? 'block' : 'none'" (click)="closeModalFile()">
+    <div class="modal-dialog modal-dialog-centered custom-modal" (click)="$event.stopPropagation()"
+        style="width: 400px; height:300px">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="importModalLabel">Import Products</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title">Upload files</h5>
+                <button type="button" class="btn-close" aria-label="Close" (click)="closeModalFile()"></button>
             </div>
+
             <div class="modal-body">
-                <input type="file" id="excelFile" (change)="onFileChange($event)" class="form-control"
-                    accept=".xlsx, .xls" />
+                <div class="text-muted mb-3">Upload files in this project.</div>
+
+                <div class="drag-drop-area border border-dashed rounded text-center py-4"
+                    (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+                    <p class="text-muted">Drag and drop your files here, or</p>
+                </div>
+                <input type="file" class="form-control" (change)="onFileChange($event)" accept="image/*" />
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" (click)="uploadData()">Upload</button>
+
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary" (click)="closeModalFile()"
+                    style="color: black;">Cancel</button>
+                <button type="button" class="btn btn-primary" (click)="uploadFiles()">Upload files</button>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Import Modal -->
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true"
+    style="backdrop-filter: blur(0px); background: rgba(77, 76, 76, 0.7)">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h5 class="modal-title" id="importModalLabel">
+                    Upload and Attach Files
+                </h5>
+                <p class="modal-subtitle text-muted">
+                    Upload and attach files to this project
+                </p>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="drag-drop-area border border-dashed p-4 text-center" (drop)="onDrop($event)"
+                    (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" [class.drag-over]="isDragging">
+                    <p class="mb-0">Drag and drop files here, or click to browse</p>
+                </div>
+                <input type="file" class="form-control" (change)="onFileSelectimport($event)" accept=".xlsx, .xls, .csv" />
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer d-flex justify-content-center">
+                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <button type="button" class="btn" style="background-color: blueviolet; color: white"
+                    (click)="uploadFilesImport()">
+                    Upload
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

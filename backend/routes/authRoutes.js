@@ -32,9 +32,21 @@ router.delete('/products/:productId', authController.deleteProduct);
 //cart routes
 router.post('/move-to-cart',authenticate, authController.moveToCart);
 router.get('/cart', authenticate, authController.getCartItems);
-router.post('/cart/update', authenticate, authController.updateCartItemQuantity);
+router.put('/cart/update', authenticate, authController.updateCartItemQuantity);
 router.delete('/delete-cart-item/:cartId', authenticate, authController.deleteCartItem);
 
+
+//upload files 
+
+router.post('/upload', authenticate,upload.single('file'), authController.uploadFile);
+// Route to get the list of uploaded files
+router.get('/files',authenticate,authController.getUploadedFiles);
+router.post('/download',authenticate, authController.downloadFiles);
+
+
+
+// Import routes
+router.post('/import', authenticate, upload.single('file'), authController.importFile);
 
 module.exports = router;
 

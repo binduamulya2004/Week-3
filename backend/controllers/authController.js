@@ -4,15 +4,16 @@ const userModel = require('../models/userModel');
 const { signupValidation } = require('../validations/userValidation');
 const dotenv = require('dotenv');
 const sharp = require('sharp');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand ,ListObjectsV2Command,GetObjectCommand} = require('@aws-sdk/client-s3');
 const vendorModel = require('../models/vendorModel');
 const productModel = require('../models/productModel');
 const categoryModel = require('../models/categoryModel');
 const knex = require('../mysql/connection');
 const productToVendorModel = require('../models/productToVendor');
 const cartsModel = require('../models/cartsModel');
-const { log } = require('console');
-
+const { log, Console } = require('console');
+const { zipFiles } = require('./zipUtils');
+const archiver = require('archiver');
 
 dotenv.config();
 
@@ -23,6 +24,25 @@ const s3 = new S3Client({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 });
+
+async function uploadToS3(fileBuffer, fileName, mimeType, userId) {
+  const params = {
+    Bucket: process.env.AWS_BUCKET_NAME,
+    Key: `bindu@AKV0796/${userId}/${fileName}`,
+    Body: fileBuffer,
+    ContentType: mimeType,
+  };
+
+  try {
+    const command = new PutObjectCommand(params);
+    const data = await s3.send(command);
+    return `https://${params.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`;
+  } catch (error) {
+    console.error('Error uploading file to S3:', error);
+    throw new Error('Failed to upload file to S3');
+  }
+}
+
 
 module.exports = {
   async signup(req, res, next) {
@@ -256,15 +276,13 @@ module.exports = {
     async getProducts(req, res) {
     try {
       console.log('req.query:', req.query);
-      let { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
 
-      page = parseInt(page); // Ensure page is an integer
-      limit = parseInt(limit); // Ensure limit is an integer
-      const offset = (page - 1) * limit;
+    console.log('limit:', limit);
+    console.log('offset:', offset);
 
-      console.log('page:', page);
-      console.log('limit:', limit);
-      console.log('offset:', offset);
+  
 
       // Get all records with necessary joins
       const allProducts = await knex('products')
@@ -361,6 +379,7 @@ module.exports = {
       next(err);
     }
   },
+
   async getCategories(req, res, next) {
     try {
       const categories = await categoryModel.getAllCategories();
@@ -547,74 +566,297 @@ module.exports = {
         .json({ message: 'Failed to delete product', error: error.message });
     }
   },
+  
 
 
 
 //cartcontrollers
 
-    async moveToCart(req, res) {
-    try {
-      const products = req.body.products; // Assume the products are sent in the request body
-      const userId = req.user.id; // Assume userId is retrieved from the authenticated request
+  //   async moveToCart(req, res) {
+  //   try {
+  //     const products = req.body.products; // Assume the products are sent in the request body
+  //     const userId = req.user.id; // Assume userId is retrieved from the authenticated request
 
-      console.log('products:', products);
-      console.log('userId:', userId);
+  //     console.log('products in movetocart:', products);
+  //     console.log('userId:', userId);
 
-      if (!Array.isArray(products) || products.length === 0) {
-        return res.status(400).json({ error: 'Invalid product details.' });
-      }
+  //     if (!Array.isArray(products) || products.length === 0) {
+  //       return res.status(400).json({ error: 'Invalid product details.' });
+  //     }
 
-      // Function to move products to cart
-      const moveToCart = async (products) => {
-        for (const product of products) {
-          const { productId, vendorId, quantity } = product;
+  //     // Function to move products to cart
+  //     const moveToCart = async (products) => {
+  //       for (const product of products) {
+  //         const { productId, vendorId, quantity } = product;
 
           
 
-          // Check if the product exists
-          const productExists = await productModel.getProductById(productId);
-          if (!productExists) {
-            throw new Error(`Product with ID ${productId} does not exist.`);
-          }
-          console.log("ProductExists:", productExists);
+  //         // Check if the product exists
+  //         const productExists = await productModel.getProductById(productId);
+  //         if (!productExists) {
+  //           throw new Error(`Product with ID ${productId} does not exist.`);
+  //         }
+  //         console.log("ProductExists:", productExists);
 
-          // Check if the vendor exists
-          const vendorExists = await vendorModel.getVendorById(vendorId);
-          if (!vendorExists) {
-            throw new Error(`Vendor with ID ${vendorId} does not exist.`);
-          }
-          console.log("VendorExists:", vendorExists);
+  //         // Check if the vendor exists
+  //         const vendorExists = await vendorModel.getVendorById(vendorId);
+  //         if (!vendorExists) {
+  //           throw new Error(`Vendor with ID ${vendorId} does not exist.`);
+  //         }
+  //         console.log("VendorExists:", vendorExists);
 
-          // Add item to cart
-          await cartsModel.addItemToCart({
-            user_id: userId,
-            product_id: productId,
-            vendor_id: vendorId,
-            quantity: quantity,
-          });
+  //         console.log(quantity, 'quantity in backend');
+
+  //         // Add item to cart
+  //         await cartsModel.addItemToCart({
+  //           user_id: userId,
+  //           product_id: productId,
+  //           vendor_id: vendorId,
+  //           quantity: quantity,
+  //         });
+  //       }
+  //     };
+
+  //     // Call the function
+  //     await moveToCart(products);
+
+  //     // Respond with success
+  //     res.status(200).json({ message: 'Products moved to cart successfully.' });
+  //   } catch (error) {
+  //     console.error('Error moving products to cart:', error.message);
+  //     res.status(500).json({ error: error.message || 'Failed to move products to cart.' });
+  //   }
+  // },
+
+
+
+  async moveToCart(req, res) {
+  const products = req.body.products; // Assuming `products` is passed in the request body
+    console.log("products: ", products);
+    const user_id = req.user.id;
+    console.log("userId: ", user_id);
+
+    
+
+  try {
+    await knex.transaction(async (trx) => {
+      for (const product of products) {
+        const { product_id, vendor_id, quantity } = product;
+         const user_id = req.user.id;
+        // Insert or update the cart entry
+        const existingCartItem = await trx('carts')
+          .where({ user_id, product_id, vendor_id })
+          .first();
+
+        if (existingCartItem) {
+          await trx('carts')
+            .where({ id: existingCartItem.id })
+            .update({ quantity: existingCartItem.quantity + quantity });
+        } else {
+          await trx('carts').insert({ user_id, product_id, vendor_id, quantity });
         }
-      };
 
-      // Call the function
-      await moveToCart(products);
+        // Decrease the quantity in stock
+        await trx('products')
+          .where({ product_id })
+          .decrement('quantity_in_stock', quantity);
+      }
+    });
 
-      // Respond with success
-      res.status(200).json({ message: 'Products moved to cart successfully.' });
-    } catch (error) {
-      console.error('Error moving products to cart:', error.message);
-      res.status(500).json({ error: error.message || 'Failed to move products to cart.' });
-    }
-  },
+    res.status(200).json({ message: 'Products moved to cart successfully.' });
+  } catch (error) {
+    console.error('Error moving products to cart:', error);
+    res.status(500).json({ error: 'Failed to move products to cart.' });
+  }
+},
 
-  async  getCartItems(req, res) {
+//   async  getCartItems(req, res) {
+//   try {
+//     const { page = 1, limit = 5 } = req.query;
+//     const offset = (page - 1) * limit;
+    
+//     console.log('page:', page);
+//     const userId = req.user.id;
+
+//     // Database queries for fetching total items and cart details
+//     const totalItemsQuery = knex('carts')
+//       .count('* as total')
+//       .where('user_id', userId)
+//       .andWhere('quantity', '>', 0) // Ensure quantity is greater than 0
+//       .join('products', 'carts.product_id', '=', 'products.product_id')
+//       .andWhere('products.status', '=', 1) // Ensure the product is available
+//       .first();
+
+    
+
+
+//     const cartItemsQuery = knex('carts')
+//   .join('products', 'carts.product_id', '=', 'products.product_id')
+//   .join('categories', 'products.category_id', '=', 'categories.category_id')
+//   .join('product_to_vendor', function () {
+//     this.on('products.product_id', '=', 'product_to_vendor.product_id')
+//       .andOn('carts.vendor_id', '=', 'product_to_vendor.vendor_id'); // Ensure cart's vendor matches
+//   })
+//   .join('vendors', 'product_to_vendor.vendor_id', '=', 'vendors.vendor_id')
+//   .select(
+//     'carts.id',
+//     'products.product_id',
+//     'products.product_name',
+//     'products.product_image',
+//     'categories.category_name',
+//     'vendors.vendor_name',
+//     'carts.quantity',
+//     'carts.quantity as initialQuantity',
+//     'products.quantity_in_stock'
+//   )
+//   .where('carts.user_id', userId)  // Replace userId with the actual user ID or a parameter
+//   .andWhere('carts.quantity', '>', 0) // Ensure quantity is greater than 0
+//   .andWhere('products.status', '=', 1) // Ensure the product is available
+//   .limit(limit) // Limit the number of results
+//   .offset(offset) // Offset the results for pagination
+//   .debug(); // Debugging to see the SQL query
+
+
+// // Execute the query and fetch result
+
+
+//     // Execute both queries in parallel
+//     const [totalResult, cartItems] = await Promise.all([totalItemsQuery, cartItemsQuery]);
+//       console.log('cartItems:', cartItems);
+
+//     console.log('totalResult:', totalResult);
+
+    
+
+//     if (!totalResult?.total || cartItems.length === 0) {
+//       return res.status(404).json({ success: false, message: 'No cart items found for this user' });
+//     }
+
+//     //console.log(products, 'products');
+
+//     res.json({
+//       success: true,
+//       total: totalResult.total,
+//       page: Number(page),
+//       limit: Number(limit),
+//       products: cartItems,
+//     });
+//   } catch (error) {
+//     console.error('Error fetching cart items:', error);
+//     res.status(500).json({ success: false, message: 'Internal Server Error' });
+//   }
+// },
+
+  
+  
+  
+  
+  
+  
+
+
+  // Controller to update cart item quantities
+  // async updateCartItemQuantity(req, res) {
+  //   try {
+  //     console.log(req.user)
+  //     const userId = req.user.id; // Extract user ID from authenticated request
+  //     const { products } = req.body; // Assume an array of products is sent in the request body
+  //     console.log(userId, 'userId');
+  //     if (!Array.isArray(products) || products.length === 0) {
+  //       return res.status(400).json({ error: 'Invalid request body. Products array is required.' });
+  //     }
+
+  //     // Function to update the quantity of a single cart item
+  //     const updateCartItemQuantity = async (productId, changeInQuantity, userId) => {
+  //       console.log("Product_Id:", productId);
+  //       console.log("ChangeInQuantity:", changeInQuantity);
+  //       console.log("UserId:", userId);
+
+  //       const trx = await knex.transaction(); // Start a transaction
+  //       try {
+  //         // Fetch current product details
+  //         const product = await trx('products').where('product_id', productId).first();
+  //         if (!product) {
+  //           throw { status: 404, message: 'Product not found' };
+  //         }
+
+  //         // Calculate new stock
+  //         const newStock = product.quantity_in_stock - changeInQuantity;
+  //         if (newStock < 0) {
+  //           throw { status: 400, message: 'Not enough stock available' };
+  //         }
+
+  //         // Fetch current cart item details
+  //         const cartItem = await trx('carts')
+  //           .where('product_id', productId)
+  //           .andWhere('user_id', userId)
+  //           .first();
+  //         if (!cartItem) {
+  //           throw { status: 404, message: 'Cart item not found' };
+  //         }
+
+  //         // Calculate updated cart quantity
+  //         const updatedCartQuantity = cartItem.quantity + changeInQuantity;
+  //         if (updatedCartQuantity < 0) {
+  //           throw { status: 400, message: 'Invalid cart quantity' };
+  //         }
+
+  //         // Update cart table
+  //         await trx('carts')
+  //           .where('product_id', productId)
+  //           .andWhere('user_id', userId)
+  //           .update({ quantity: updatedCartQuantity });
+
+  //         // Update product stock
+  //         await trx('products')
+  //           .where('product_id', productId)
+  //           .update({ quantity_in_stock: newStock });
+
+  //         await trx.commit(); // Commit transaction
+  //         return { success: true };
+  //       } catch (error) {
+  //         await trx.rollback(); // Rollback transaction in case of error
+  //         console.error('Transaction error:', error);
+  //         return { success: false, ...error };
+  //       }
+  //     };
+
+  //     // Iterate over all products and update their quantities in parallel
+  //     const updateResults = await Promise.all(
+  //       products.map(({ productId,  quantity }) =>
+  //         updateCartItemQuantity(productId, quantity, userId)
+  //       )
+  //     );
+
+  //     // Check for errors in the results
+  //     const errors = updateResults.filter((result) => !result.success);
+  //     if (errors.length > 0) {
+  //       return res.status(400).json({
+  //         error: 'Some updates failed',
+  //         details: errors.map((err) => ({ productId: err.productId, message: err.message || 'Unknown error' }))
+  //       });
+  //     }
+
+  //     return res.status(200).json({ message: 'Cart and product updated successfully' });
+  //   } catch (error) {
+  //     console.error('Error in updating cart items and products:', error);
+  //     return res.status(500).json({ error: 'Failed to update cart items and products' });
+  //   }
+  // },
+
+
+  // Update quantities in the cart and product stock with a transaction for multiple products
+  
+  
+  async getCartItems(req, res) {
   try {
     const { page = 1, limit = 5 } = req.query;
+   
     const offset = (page - 1) * limit;
-    
-    console.log('page:', page);
     const userId = req.user.id;
+    console.log("userId in cartitems : ", userId);
 
-    // Database queries for fetching total items and cart details
+    // Fetch the total count of cart items for the user where quantity > 0 and product is available
     const totalItemsQuery = knex('carts')
       .count('* as total')
       .where('user_id', userId)
@@ -622,9 +864,6 @@ module.exports = {
       .join('products', 'carts.product_id', '=', 'products.product_id')
       .andWhere('products.status', '=', 1) // Ensure the product is available
       .first();
-
-    
-
 
     const cartItemsQuery = knex('carts')
   .join('products', 'carts.product_id', '=', 'products.product_id')
@@ -653,23 +892,25 @@ module.exports = {
   .debug(); // Debugging to see the SQL query
 
 
-// Execute the query and fetch result
-
-
     // Execute both queries in parallel
     const [totalResult, cartItems] = await Promise.all([totalItemsQuery, cartItemsQuery]);
-      console.log('cartItems:', cartItems);
 
-    console.log('totalResult:', totalResult);
-
+     console.log('totalResult:', totalResult);
+    console.log('cartItems:', cartItems);
+   
     
-
-    if (!totalResult?.total || cartItems.length === 0) {
-      return res.status(404).json({ success: false, message: 'No cart items found for this user' });
+    // If no cart items are found for the user, respond with an empty list
+    if (!totalResult.total || cartItems.length === 0) {
+      return res.status(200).json({
+        success: true,
+        total: 0,
+        page: Number(page),
+        limit: Number(limit),
+        products: [],
+      });
     }
 
-    //console.log(products, 'products');
-
+    // Return the cart items and total count
     res.json({
       success: true,
       total: totalResult.total,
@@ -682,97 +923,88 @@ module.exports = {
     res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 },
-
-
-
-  // Controller to update cart item quantities
+  
+  
   async updateCartItemQuantity(req, res) {
-    try {
-      console.log(req.user)
-      const userId = req.user.id; // Extract user ID from authenticated request
-      const { products } = req.body; // Assume an array of products is sent in the request body
-      console.log(userId, 'userId');
-      if (!Array.isArray(products) || products.length === 0) {
-        return res.status(400).json({ error: 'Invalid request body. Products array is required.' });
-      }
 
-      // Function to update the quantity of a single cart item
-      const updateCartItemQuantity = async (productId, changeInQuantity, userId) => {
+  try {
+    const userId = req.user.userId;
+
+    // Start a transaction
+    const trx = await knex.transaction();
+
+    try {
+      for (const { productId, changeInQuantity } of parsedData) {
         console.log("Product_Id:", productId);
         console.log("ChangeInQuantity:", changeInQuantity);
         console.log("UserId:", userId);
 
-        const trx = await knex.transaction(); // Start a transaction
-        try {
-          // Fetch current product details
-          const product = await trx('products').where('product_id', productId).first();
-          if (!product) {
-            throw { status: 404, message: 'Product not found' };
-          }
-
-          // Calculate new stock
-          const newStock = product.quantity_in_stock - changeInQuantity;
-          if (newStock < 0) {
-            throw { status: 400, message: 'Not enough stock available' };
-          }
-
-          // Fetch current cart item details
-          const cartItem = await trx('carts')
-            .where('product_id', productId)
-            .andWhere('user_id', userId)
-            .first();
-          if (!cartItem) {
-            throw { status: 404, message: 'Cart item not found' };
-          }
-
-          // Calculate updated cart quantity
-          const updatedCartQuantity = cartItem.quantity + changeInQuantity;
-          if (updatedCartQuantity < 0) {
-            throw { status: 400, message: 'Invalid cart quantity' };
-          }
-
-          // Update cart table
-          await trx('carts')
-            .where('product_id', productId)
-            .andWhere('user_id', userId)
-            .update({ quantity: updatedCartQuantity });
-
-          // Update product stock
-          await trx('products')
-            .where('product_id', productId)
-            .update({ quantity_in_stock: newStock });
-
-          await trx.commit(); // Commit transaction
-          return { success: true };
-        } catch (error) {
-          await trx.rollback(); // Rollback transaction in case of error
-          console.error('Transaction error:', error);
-          return { success: false, ...error };
+        // Fetch current product details from the products table
+        const product = await trx('products').where('product_id', productId).first();
+        if (!product) {
+          throw { success: false, status: 404, error: 'Product not found', productId };
         }
-      };
 
-      // Iterate over all products and update their quantities in parallel
-      const updateResults = await Promise.all(
-        products.map(({ productId,  quantity }) =>
-          updateCartItemQuantity(productId, quantity, userId)
-        )
-      );
+        // Calculate the new stock based on change in quantity
+        const newStock = product.quantity_in_stock - changeInQuantity;
+        if (newStock < 0) {
+          throw { success: false, status: 400, error: 'Not enough stock available', productId };
+        }
 
-      // Check for errors in the results
-      const errors = updateResults.filter((result) => !result.success);
-      if (errors.length > 0) {
-        return res.status(400).json({
-          error: 'Some updates failed',
-          details: errors.map((err) => ({ productId: err.productId, message: err.message || 'Unknown error' }))
-        });
+        // Fetch current cart item details
+        const cartItem = await trx('carts')
+          .where('product_id', productId)
+          .andWhere('user_id', userId)
+          .first();
+
+        if (!cartItem) {
+          throw { success: false, status: 404, error: 'Cart item not found', productId };
+        }
+
+        // Calculate the updated cart quantity
+        const updatedCartQuantity = cartItem.quantity + changeInQuantity;
+
+        if (updatedCartQuantity < 0) {
+          throw { success: false, status: 400, error: 'Invalid cart quantity', productId };
+        }
+
+        // Update the quantity in the cart table
+        await trx('carts')
+          .where('product_id', productId)
+          .andWhere('user_id', userId)
+          .update({ quantity: updatedCartQuantity });
+
+        // Update the product's stock in the products table
+        await trx('products')
+          .where('product_id', productId)
+          .update({ quantity_in_stock: newStock });
       }
+
+      // Commit the transaction if all operations succeed
+      await trx.commit();
 
       return res.status(200).json({ message: 'Cart and product updated successfully' });
     } catch (error) {
-      console.error('Error in updating cart items and products:', error);
-      return res.status(500).json({ error: 'Failed to update cart items and products' });
+      await trx.rollback();
+      console.error('Transaction error:', error);
+
+      if (error.success === false) {
+        return res.status(error.status).json({ error: error.error, productId: error.productId });
+      }
+
+      throw error; // Rethrow unexpected errors
     }
-  },
+  } catch (error) {
+    console.error('Error in updating cart items and products:', error);
+    return res.status(500).json({ error: 'Failed to update cart items and products' });
+  }
+},
+  
+
+
+
+
+
   // Controller to delete a cart item and update product stock in one method
   async deleteCartItem(req, res) {
     const { cartId } = req.params;
@@ -814,7 +1046,198 @@ module.exports = {
       console.error('Error during cart item deletion:', error);
       res.status(500).json({ message: 'Failed to delete cart item' });
     }
+  },
+
+
+
+   
+
+ 
+  // Upload file controller
+  async uploadFile(req, res) {
+    const file = req.file;
+    const userId = req.user.id;
+
+    if (!file || !userId) return res.status(400).json({ error: 'File or User ID missing' });
+
+    try {
+      const fileName = `${userId}_${Date.now()}_${file.originalname}`;
+      const fileBuffer = await sharp(file.buffer).resize(800, 800).toBuffer();
+      const fileUrl = await uploadToS3(fileBuffer, fileName, file.mimetype, userId);
+
+      res.status(200).json({ message: 'File uploaded successfully', fileUrl });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      res.status(500).json({ error: 'Failed to upload file' });
+    }
+  },
+
+ 
+// Fetch uploaded files for a specific user from S3
+ async getUploadedFiles(req, res) {
+    const userId = req.user.id;
+    console.log("userrrrrrrrrrrrrrrrrrrrrrrrrr", userId);
+    if (!userId) return res.status(400).json({ error: 'User not authenticated' });
+
+    const params = {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Prefix: `bindu@AKV0796/${userId}/`,
+    };
+
+    try {
+      const command = new ListObjectsV2Command(params);
+      const data = await s3.send(command);
+
+      const files = data.Contents.map(item => ({
+        key: item.Key,
+        lastModified: item.LastModified,
+        size: item.Size,
+        url: `https://${params.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${item.Key}`,
+      }));
+
+
+      res.status(200).json({ files });
+    } catch (error) {
+      console.error('Error fetching uploaded files:', error);
+      res.status(500).json({ error: 'Failed to fetch uploaded files' });
+    }
+  },
+
+ 
+ // Download files controller
+  async downloadFiles(req, res) {
+    const { fileNames } = req.body;
+    const userId = req.user.id;
+
+    if (!fileNames || !Array.isArray(fileNames) || fileNames.length === 0) {
+      return res.status(400).json({ error: 'No file names provided' });
+    }
+
+    try {
+      if (fileNames.length === 1) {
+        // Download a single file
+        const fileName = fileNames[0];
+        const params = {
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: `bindu@AKV0796/${userId}/${fileName}`,
+        };
+
+        const command = new GetObjectCommand(params);
+        const data = await s3.send(command);
+
+        res.setHeader('Content-Type', data.ContentType);
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        data.Body.pipe(res);
+      } else {
+          // Download multiple files as a zip
+        const archive = archiver('zip', { zlib: { level: 9 } });
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', 'attachment; filename="files.zip"');
+
+        archive.pipe(res);
+
+        for (const fileName of fileNames) {
+          const params = {
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: `bindu@AKV0796/${userId}/${fileName}`,
+          };
+
+          const command = new GetObjectCommand(params);
+          const data = await s3.send(command);
+
+          archive.append(data.Body, { name: fileName });
+        }
+
+        await archive.finalize();
+      }
+    } catch (error) {
+        console.error('Error downloading files:', error);
+      res.status(500).json({ error: 'Failed to download files' });
+    }
+  },
+
+
+
+ // Import data controller
+async importFile(req, res) {
+  const products = req.body;  // No need for JSON.parse since express.json() handles it.
+
+  if (!Array.isArray(products)) {
+    return res.status(400).json({ error: 'Invalid JSON format: Expected an array' });
   }
+
+  console.log("products: ", products);
+
+  try {
+    // Process each product in the imported data
+    for (let product of products) {
+      // Check if the category exists
+      let category = await knex('categories').where('category_name', product.category_name).first();
+      if (!category) {
+        // If the category does not exist, create a new one
+        category = await knex('categories').insert({
+          category_name: product.category_name,
+          description: product.category_description || '',  // Assuming there might be a description
+          status: '1'  // Active
+        }).returning('*');
+      }
+
+      // Check if the vendor exists
+      let vendorName = product.vendorName;
+      if (!vendorName) {
+        return res.status(400).json({ error: 'Vendor name is missing' });
+      }
+
+      let vendor = await knex('vendors').where('vendor_name', vendorName).first();
+      if (!vendor) {
+        // If the vendor does not exist, create a new one
+        vendor = await knex('vendors').insert({
+          vendor_name: vendorName,
+          contact_name: product.vendor_contact_name || '',
+          address: product.vendor_address || '',
+          city: product.vendor_city || '',
+          postal_code: product.vendor_postal_code || '',
+          country: product.vendor_country || '',
+          phone: product.vendor_phone || '',
+          status: '1'  // Active
+        }).returning('*');
+      }
+
+      // Insert the product if it doesn't exist
+      let existingProduct = await knex('products').where('product_name', product.product_name).first();
+      if (!existingProduct) {
+        // Insert new product
+        existingProduct = await knex('products').insert({
+          product_name: product.product_name,
+          category_id: category.category_id,  // Reference to category
+          quantity_in_stock: product.quantity_in_stock || 0,
+          unit_price: product.unit_price || 0,
+          product_image: product.product_image || '', // Assuming product image is passed
+          unit: product.unit || '',  // Assuming unit is passed
+          status: '1'  // Active
+        }).returning('*');
+      }
+
+      console.log("existing product", existingProduct);
+
+      // Optionally, associate the product with the vendor
+      await knex('product_to_vendor').insert({
+        vendor_id: vendor.vendor_id,  // Reference to vendor
+        product_id: existingProduct.product_id,  // Reference to product
+        status: '1'  // Active
+      });
+    }
+
+    res.status(200).json({ message: 'Data imported successfully' });
+  } catch (error) {
+    console.error('Error importing data:', error);
+    res.status(500).json({ error: 'Error importing data' });
+  }
+}
+,
+
+
+ 
 };
 
 

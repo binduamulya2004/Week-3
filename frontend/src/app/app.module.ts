@@ -9,9 +9,10 @@ import { LoginComponent } from './features/auth/components/login/login.component
 import { HTTP_INTERCEPTORS, HttpClientModule } from '@angular/common/http';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { DashboardComponent } from './features/auth/components/dashboard/dashboard.component';
-import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { CommonModule } from '@angular/common';
 
+import { CommonModule } from '@angular/common';
+import { ToastrModule } from 'ngx-toastr';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 // import { ToastrModule } from 'ngx-toastr';
 @NgModule({
@@ -26,24 +27,22 @@ import { CommonModule } from '@angular/common';
     AppRoutingModule,
     ReactiveFormsModule,
     HttpClientModule,
-    BrowserAnimationsModule,CommonModule,FormsModule
-
-    
-    // required animations module
-  //   ToastrModule.forRoot({
-  //     timeOut: 5000, // duration in milliseconds
-  //     positionClass: 'toast-top-center', // position of the toast
-  //     preventDuplicates: true, // prevent duplicate toasts
-  //     progressBar: true, // show progress bar
-  //     closeButton: true, // show close button
-  //     tapToDismiss: true,
-  //     newestOnTop: true,
-  //   }), 
+    BrowserAnimationsModule,
+    CommonModule,
+    FormsModule,
+    ToastrModule.forRoot({
+      timeOut: 5000, // duration in milliseconds
+      positionClass: 'toast-top-center', // position of the toast
+      preventDuplicates: true, // prevent duplicate toasts
+      progressBar: true, // show progress bar
+      closeButton: true, // show close button
+      tapToDismiss: true,
+      newestOnTop: true,
+    }),
   ],
-  providers: [{ provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },],
-  bootstrap: [AppComponent]
+  providers: [
+    { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
+  ],
+  bootstrap: [AppComponent],
 })
-export class AppModule { }
-
-
-
+export class AppModule {}

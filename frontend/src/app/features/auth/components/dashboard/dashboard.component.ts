@@ -9,6 +9,7 @@ import { FormsModule } from '@angular/forms';
 import { jsPDF } from 'jspdf';
 import * as bootstrap from 'bootstrap';
 import { Observable } from 'rxjs';
+import { log } from 'console';
 
 @Component({
   selector: 'app-dashboard',
@@ -36,11 +37,8 @@ export class DashboardComponent implements OnInit {
   totalPages: number = 0;
   paginatedProducts: any[] = [];
 
-  files: { name: string; size: string }[] = [
-    { name: 'file1', size: '1MB' },
-    { name: 'file2', size: '2MB' },
-    { name: 'file3', size: '3MB' },
-  ];
+  uploadedFiles: any[] = [];
+  selectedFiles: string[] = [];
 
   isProductModalOpen: boolean = false;
   addProductForm: FormGroup;
@@ -61,14 +59,13 @@ export class DashboardComponent implements OnInit {
   ];
   showFilters: boolean = false;
   columns = [
-    { label: 'Product Name', checked: false },
-    { label: 'Status', checked: false },
-    { label: 'Category', checked: false },
-    { label: 'Vendors', checked: false },
-    { label: 'Quantity', checked: false },
-    { label: 'Unit', checked: false },
+    { label: 'Product Name', key: 'product_name', checked: false },
+    { label: 'Status', key: 'status', checked: false },
+    { label: 'Category', key: 'category', checked: false },
+    { label: 'Vendors', key: 'vendors', checked: false },
+    { label: 'Quantity', key: 'quantity', checked: false },
+    { label: 'Unit', key: 'unit', checked: false },
   ];
-
   quantityChanges: { [key: number]: number } = {};
   flag = 1;
   selectedProductForEdit: any;
@@ -81,6 +78,10 @@ export class DashboardComponent implements OnInit {
   totalCartItems: number = 0;
   cartPages: number[] = [];
   cartProducts: any[] = [];
+  userId: any;
+
+  files: File[] = [];
+  isDragging: boolean = false;
 
   constructor(private http: HttpClient, private fb: FormBuilder) {
     this.addProductForm = this.fb.group({
@@ -103,6 +104,14 @@ export class DashboardComponent implements OnInit {
     this.getCategories();
     this.getVendors();
     this.fetchCartPage(this.currentCartPage);
+    this.fetchUploadedFiles();
+  }
+  ngDoCheck(): void {
+    console.log('ngDoCheck Called');
+    if (!this.showCart && this.flag == 1) {
+      this.applyQuantityChanges(); // Call this when the cart is closed
+      this.flag = 0;
+    }
   }
 
   toggleTable(view: string): void {
@@ -114,9 +123,66 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  updateQuantity(product: any, change: number): void {
+    const newQuantity = product.quantity + change;
+    console.log('newQuantity:', newQuantity);
+
+    // Only allow non-negative quantities
+    if (newQuantity >= 0) {
+      product.quantity = newQuantity;
+      const initialQuantity = product.initialQuantity || product.quantity;
+      this.quantityChanges[product.product_id] = newQuantity - initialQuantity;
+    }
+    console.log('quantityChanges:', this.quantityChanges);
+  }
+  adjustQuantity(product: any, change: number): void {
+    const newQuantity = product.currentQuantity + change;
+    if (newQuantity >= 0 && newQuantity <= product.quantity_in_stock) {
+      product.currentQuantity = newQuantity;
+    }
+  }
+
+  // fetchCartPage(page: number): void {
+  //   if (page < 1 || (this.totalCartPages && page > this.totalCartPages)) return;
+
+  //   this.http
+  //     .get<{
+  //       success: string;
+  //       products: product[];
+  //       total: number;
+  //       page: number;
+  //       limit: number;
+  //     }>(
+  //       `${environment.apiUrl}/auth/cart?page=${page}&limit=${this.cartPageSize}`
+  //     )
+  //     .subscribe({
+  //       next: (data) => {
+  //         console.log(data);
+  //         this.cartProducts = data.products;
+  //         this.totalCartItems = data.total;
+  //         this.currentCartPage = data.page;
+  //         this.totalCartPages = Math.ceil(
+  //           this.totalCartItems / this.cartPageSize
+  //         );
+  //         this.cartPages = Array.from(
+  //           { length: this.totalCartPages },
+  //           (_, i) => i + 1
+  //         );
+  //         console.log(this.cartPages);
+  //         console.log('cartProducts: ', this.cartProducts);
+  //       },
+  //       error: (error) => {
+  //         console.error('Error fetching cartProducts:', error);
+  //       },
+  //     });
+  // }
+
   fetchCartPage(page: number): void {
     if (page < 1 || (this.totalCartPages && page > this.totalCartPages)) return;
 
+    const limit = this.cartPageSize;
+
+    // Directly call the backend API to fetch cart items
     this.http
       .get<{
         success: string;
@@ -124,9 +190,7 @@ export class DashboardComponent implements OnInit {
         total: number;
         page: number;
         limit: number;
-      }>(
-        `${environment.apiUrl}/auth/cart?page=${page}&limit=${this.cartPageSize}`
-      )
+      }>(`${environment.apiUrl}/auth/cart?page=${page}&limit=${limit}`)
       .subscribe({
         next: (data) => {
           console.log(data);
@@ -149,6 +213,32 @@ export class DashboardComponent implements OnInit {
       });
   }
 
+  applyQuantityChanges(): void {
+    // Prepare the payload for the backend with the changes
+    const updatedProducts = Object.keys(this.quantityChanges)
+      .filter((product_id) => this.quantityChanges[+product_id] !== 0) // Exclude unchanged quantities
+      .map((product_id) => ({
+        productId: +product_id,
+        changeInQuantity: this.quantityChanges[+product_id],
+      }));
+
+    // Call the backend to update the quantities in batch
+    if (updatedProducts.length > 0) {
+      this.http
+        .put<any>(`${environment.apiUrl}/auth/cart/update`, updatedProducts)
+        .subscribe({
+          next: (response) => {
+            console.log('Cart items updated successfully:', response);
+            this.fetchCartPage(this.currentCartPage); // Optionally re-fetch the cart items
+            this.quantityChanges = {}; // Clear the changes after a successful update
+          },
+          error: (error) => {
+            console.error('Error updating cart items:', error);
+          },
+        });
+    }
+  }
+
   deleteCartItem(cartId: number): void {
     this.http
       .delete<any>(`${environment.apiUrl}/auth/delete-cart-item/${cartId}`)
@@ -162,68 +252,86 @@ export class DashboardComponent implements OnInit {
       });
   }
 
-  updateQuantity(product: any, change: number): void {
-    const newQuantity = product.quantity + change;
-    if (newQuantity >= 0) {
-      product.quantity = newQuantity;
-      const initialQuantity = product.initialQuantity || product.quantity;
-      this.quantityChanges[product.product_id] = newQuantity - initialQuantity;
-    }
-  }
+  // moveSelectedProducts(): void {
+  //   const selectedProducts = this.selectedProducts
+  //     .filter((product) => product.isSelected)
+  //     .map((product) => {
+  //       console.log('Product object:', product); // Log to check the structure of the product
+  //       return {
+  //         productId: product.product_id,
+  //         vendorId: product.selectedVendorId,
+  //         quantity: product.quantity_in_stock,
+  //       };
+  //     });
+
+  //   if (selectedProducts.length === 0) {
+  //     alert('Please select at least one product to move.');
+  //     return;
+  //   }
+  //   console.log('Selected products in frontend:', selectedProducts);
+  //   this.http
+  //     .post(`${environment.apiUrl}/auth/move-to-cart`, {
+  //       products: selectedProducts,
+  //     })
+  //     .subscribe({
+  //       next: (response) => {
+  //         // alert('Products moved successfully!');
+  //         this.http
+  //           .post(`${environment.apiUrl}/auth/cart/update`, {
+  //             products: selectedProducts,
+  //           })
+  //           .subscribe({
+  //             next: (response) => {
+  //               alert(
+  //                 'Products moved successfully! And cart updated successfully!'
+  //               );
+  //             },
+  //             error: (error) => {
+  //               alert('Failed to update cart.');
+  //               console.error('Error update cart:', error);
+  //             },
+  //           });
+  //       },
+  //       error: (error) => {
+  //         alert('Failed to move products.');
+  //         console.error('Error moving products to cart:', error);
+  //       },
+  //     });
+  // }
 
   moveSelectedProducts(): void {
     const selectedProducts = this.selectedProducts
       .filter((product) => product.isSelected)
-      .map((product) => {
-        console.log('Product object:', product); // Log to check the structure of the product
-        return {
-          productId: product.product_id, // Ensure product_id exists
-          vendorId: product.selectedVendorId,
-          quantity: product.quantity_in_stock,
-        };
-      });
+      .map((product) => ({
+        user_id: this.userId,
+        product_id: product.product_id,
+        vendor_id: product.selectedVendorId,
+        quantity: product.currentQuantity,
+      }));
+    console.log('Selected products in frontend:', selectedProducts);
 
     if (selectedProducts.length === 0) {
       alert('Please select at least one product to move.');
       return;
     }
-    console.log('Selected products in frontend:', selectedProducts);
+
     this.http
       .post(`${environment.apiUrl}/auth/move-to-cart`, {
         products: selectedProducts,
       })
-      .subscribe({
-        next: (response) => {
-          // alert('Products moved successfully!');
-          this.http
-            .post(`${environment.apiUrl}/auth/cart/update`, {
-              products: selectedProducts,
-            })
-            .subscribe({
-              next: (response) => {
-                alert(
-                  'Products moved successfully! And cart updated successfully!'
-                );
-              },
-              error: (error) => {
-                alert('Failed to update cart.');
-                console.error('Error update cart:', error);
-              },
-            });
+      .subscribe(
+        (response) => {
+          console.log('Products moved to cart:', response);
+          //this.closeModal('moveToModal');
+          alert('Products moved successfully!');
+          // Optionally refresh products or update UI
+          this.fetchCartPage(this.currentCartPage);
         },
-        error: (error) => {
-          alert('Failed to move products.');
+        (error) => {
           console.error('Error moving products to cart:', error);
-        },
-      });
-  }
-  uploadData() {}
-
-  adjustQuantity(product: any, change: number): void {
-    const newQuantity = product.quantity_in_stock + change;
-    if (newQuantity >= 0 && newQuantity <= product.quantity_in_stock) {
-      product.quantity_in_stock = newQuantity;
-    }
+          alert('Failed to move products.');
+        }
+      );
   }
 
   clearSelectedProducts() {
@@ -234,29 +342,37 @@ export class DashboardComponent implements OnInit {
     this.showFilters = !this.showFilters;
   }
 
-  // Handles the search input and sends the request to backend with selected columns
   onSearch(event: Event) {
-    const searchTerm = (event.target as HTMLInputElement).value;
+    const searchTerm = (event.target as HTMLInputElement).value.toLowerCase();
     this.searchTerm = searchTerm;
     console.log('Search term:', searchTerm);
-    this.getFilteredProducts(searchTerm, this.selectedColumns.join(',')); // Send selected columns if any
+
+    // Call `getProducts` with the current search term and selected columns
+    const selectedColumnsKeys = this.columns
+      .filter((col) => col.checked)
+      .map((col) => col.key);
+  }
+
+  // Apply search and filter products
+  applySearch() {
+    if (this.searchTerm) {
+      this.paginatedProducts = this.products.filter((product) =>
+        product.product_name.toLowerCase().includes(this.searchTerm)
+      );
+    } else {
+      this.paginatedProducts = [...this.products]; // Reset to original products if search term is empty
+    }
   }
 
   // Toggle selected columns
-  onColumnToggle(column: { label: string; checked: boolean }) {
+  onColumnToggle(column: any) {
     column.checked = !column.checked;
-    if (column.checked) {
-      this.selectedColumns.push(column.label);
-    } else {
-      const index = this.selectedColumns.indexOf(column.label);
-      if (index > -1) {
-        this.selectedColumns.splice(index, 1);
-      }
-    }
-    console.log(
-      `${column.label} filter ${column.checked ? 'selected' : 'deselected'}`
-    );
-    this.getProducts(); // Update the filtered products
+
+    // Update selected columns and fetch data based on filters
+    const selectedColumnsKeys = this.columns
+      .filter((col) => col.checked)
+      .map((col) => col.key);
+    console.log('Selected columns:', selectedColumnsKeys);
   }
 
   // Get filtered products with search term and selected columns
@@ -314,9 +430,11 @@ export class DashboardComponent implements OnInit {
   // }
 
   getProducts() {
-    const params = new HttpParams()
+    let params = new HttpParams()
       .set('page', this.currentPage.toString())
       .set('limit', this.itemsPerPage.toString());
+
+    // Append search term and selected columns if available
 
     this.http
       .get<{ products: any[]; totalItems: number }>(
@@ -325,11 +443,10 @@ export class DashboardComponent implements OnInit {
       )
       .subscribe(
         (response) => {
-          console.log('products -', response);
+          console.log('Filtered products:', response.products);
           this.products = response.products;
           this.totalItems = response.totalItems;
-          this.totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
-          this.paginatedProducts = this.products;
+          this.paginatedProducts = [...this.products];
         },
         (error) => {
           console.error('Error fetching products:', error);
@@ -567,6 +684,8 @@ export class DashboardComponent implements OnInit {
   addProduct() {
     if (this.addProductForm.valid) {
       const productData = this.addProductForm.value;
+      console.log('***** in frontend ');
+      console.log(productData);
 
       this.http
         .post(`${environment.apiUrl}/auth/products`, productData)
@@ -574,6 +693,8 @@ export class DashboardComponent implements OnInit {
           (response: any) => {
             console.log('Product added successfully:', response);
             const newProduct = response.product;
+
+            console.log('newproduct:', newProduct);
             this.products.push(newProduct); // Update the products array with the new product
 
             if (this.selectedFile) {
@@ -713,7 +834,7 @@ export class DashboardComponent implements OnInit {
   openModal() {
     this.isModalOpen = false;
   }
-  // Close the modal
+  // Close themodal
   closeModal() {
     this.isModalOpen = false; // Hide modal
   }
@@ -767,7 +888,228 @@ export class DashboardComponent implements OnInit {
     localStorage.clear(); // Clear the local storage
     window.location.href = '/login'; // Redirect to login page
   }
+
+  //right side of the container
+  fetchUploadedFiles() {
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders({
+      Authorization: `Bearer ${token}`,
+    });
+    this.http
+      .get<any>(`${environment.apiUrl}/auth/files`, { headers })
+      .subscribe(
+        (response: any) => {
+          console.log('Fetched Files:', response);
+          if (Array.isArray(response.files)) {
+            this.uploadedFiles = response.files.map(
+              (file: {
+                key: string;
+                url: any;
+                size: any;
+                lastModified: any;
+              }) => ({
+                name: file.key.split('/').pop(), // Extract the file name from the key
+                url: file.url,
+                size: file.size,
+                lastModified: file.lastModified,
+              })
+            );
+            console.log('Uploaded Files:', this.uploadedFiles);
+          } else {
+            console.error(
+              'Invalid response: Expected an array of files',
+              response
+            );
+          }
+        },
+        (error) => {
+          console.error('Error fetching files:', error);
+        }
+      );
+  }
+
+  // Handle file drag over event
+  onDragOver(event: DragEvent) {
+    event.preventDefault(); // Allow the drop
+    const dropzone = document.querySelector('.drag-drop-area')!;
+    dropzone.classList.add('dragover');
+  }
+
+  // Handle file drag leave event
+  onDragLeave(event: DragEvent) {
+    const dropzone = document.querySelector('.drag-drop-area')!;
+    dropzone.classList.remove('dragover');
+  }
+
+  // Handle file drop event
+  onDrop(event: DragEvent) {
+    event.preventDefault(); // Prevent the default drop behavior
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      console.log('Dropped files:', files);
+      this.selectedFile = files[0]; // If you want to select the first file
+    }
+
+    const dropzone = document.querySelector('.drag-drop-area')!;
+    dropzone.classList.remove('dragover'); // Remove dragover style after drop
+  }
+
+  // Upload the file to the backend
+  uploadFiles() {
+    if (this.selectedFile) {
+      const formData = new FormData();
+      console.log(formData);
+      formData.append('file', this.selectedFile);
+      const token = localStorage.getItem('token');
+      const headers = new HttpHeaders({
+        Authorization: `Bearer ${token}`,
+      });
+
+      this.http
+        .post(`${environment.apiUrl}/auth/upload`, formData, {
+          headers,
+        })
+        .subscribe(
+          (response) => {
+            this.fetchUploadedFiles(); // Refresh the file list after upload
+            this.closeModal();
+          },
+          (error) => {
+            console.error('Error uploading files:', error);
+          }
+        );
+    }
+  }
+
+  // Handle the selection of files for download
+  toggleFileSelection(fileName: string) {
+    const index = this.selectedFiles.indexOf(fileName);
+    if (index === -1) {
+      this.selectedFiles.push(fileName);
+    } else {
+      this.selectedFiles.splice(index, 1);
+    }
+  }
+  openModalFile() {
+    this.isModalOpen = true;
+  }
+
+  // Close the modal
+  closeModalFile() {
+    this.isModalOpen = false;
+  }
+
+  downloadAllFile() {
+    if (this.selectedFiles.length === 1) {
+      // If only one file is selected, download it directly
+      const selectedFileName = this.selectedFiles[0];
+      this.http
+        .post(
+          `${environment.apiUrl}/auth/download`,
+          { fileNames: [selectedFileName] },
+          { responseType: 'blob' }
+        )
+        .subscribe((blob) => {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = selectedFileName; // Download the single file with its name
+          link.click(); // Trigger the download
+        });
+    } else if (this.selectedFiles.length > 1) {
+      // If more than one file is selected, download them as a zip
+      this.http
+        .post(
+          `${environment.apiUrl}/auth/download`,
+          { fileNames: this.selectedFiles },
+          { responseType: 'blob' }
+        )
+        .subscribe((blob) => {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'files.zip'; // Specify the name of the downloaded zip file
+          link.click(); // Trigger the download
+        });
+    } else {
+      // If no files are selected, download all files
+      const allFileNames = this.uploadedFiles.map((file) => file.name);
+      this.http
+        .post(
+          `${environment.apiUrl}/auth/download`,
+          { fileNames: allFileNames },
+          { responseType: 'blob' }
+        )
+        .subscribe((blob) => {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'files.zip'; // Specify the name of the downloaded zip file
+          link.click(); // Trigger the download
+        });
+    }
+  }
+
+  // Download individual file
+  downloadFile(fileUrl: string) {
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.download = fileUrl.split('/').pop()!;
+    link.click();
+  }
+  onFileSelectimport(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.selectedFile = file;
+    }
+  }
+
+  uploadFilesforimport(): void {
+    if (!this.selectedFile) {
+      alert('Please select a file first.');
+      return;
+    }
+
+    const reader = new FileReader();
+
+    // Read the file
+    reader.onload = (e: any) => {
+      try {
+        const workbook = XLSX.read(e.target.result, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        console.log('File data as JSON:', jsonData);
+
+        // Send jsonData directly to the backend
+        this.http
+          .post(`${environment.apiUrl}/auth/import`, jsonData)
+          .subscribe({
+            next: (response: any) => {
+              alert('Files uploaded and data imported successfully.');
+              console.log('Response:', response);
+              // Optionally refresh data
+              // this.getProducts();
+            },
+            error: (error) => {
+              console.error('Error uploading files:', error);
+              alert('Failed to upload files.');
+            },
+          });
+      } catch (error) {
+        console.error('Error processing file:', error);
+        alert('Invalid file format.');
+      }
+    };
+
+    // Read the first file as a binary string
+    reader.readAsBinaryString(this.selectedFile);
+  }
+
+  // Wrapper function for button click
+  uploadFilesImport(): void {
+    this.uploadFilesforimport();
+  }
 }
+
 export interface product {
   product_id: number;
   product_name: string;

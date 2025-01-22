@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    
+     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
@@ -21,8 +22,10 @@
     "aws-sdk": "^2.1692.0",
     "bootstrap": "^5.3.3",
     "jspdf": "^2.5.2",
+    "ngx-toastr": "^15.0.0",
     "rxjs": "~7.5.0",
     "sharp": "^0.33.5",
+    "toastr": "^2.1.4",
     "tslib": "^2.3.0",
     "xlsx": "^0.18.5",
     "zone.js": "~0.11.4"
