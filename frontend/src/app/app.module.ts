@@ -13,6 +13,8 @@ import { DashboardComponent } from './features/auth/components/dashboard/dashboa
 import { CommonModule } from '@angular/common';
 import { ToastrModule } from 'ngx-toastr';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { EncryptionInterceptor } from './core/interceptors/encryption.interceptor';
+
 
 // import { ToastrModule } from 'ngx-toastr';
 @NgModule({
@@ -42,6 +44,11 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
   ],
   providers: [
     { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: EncryptionInterceptor,
+      multi: true,
+    },
   ],
   bootstrap: [AppComponent],
 })

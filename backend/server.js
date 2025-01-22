@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const routes = require('./routes');
 const sharp = require('sharp'); 
+const { decryptMiddleware, encryptMiddleware } = require('./middleware/jwt/cryptoMiddleware');
 
 dotenv.config();
 const app = express();
@@ -15,9 +16,17 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(bodyParser.urlencoded({ extended: true })); 
 
+// Decrypt all incoming requests
+app.use(decryptMiddleware);
+
 
 // Routes
 app.use('/api', routes);
+
+
+// Encrypt all outgoing responses
+app.use(encryptMiddleware);
+
 
 // Global Error Handler
 app.use((err, req, res, next) => {

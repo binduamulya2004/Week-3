@@ -14,7 +14,7 @@ const cartsModel = require('../models/cartsModel');
 const { log, Console } = require('console');
 const { zipFiles } = require('./zipUtils');
 const archiver = require('archiver');
-
+const { decryptMiddleware, encryptMiddleware } = require('../middleware/jwt/cryptoMiddleware');
 dotenv.config();
 
 const s3 = new S3Client({
