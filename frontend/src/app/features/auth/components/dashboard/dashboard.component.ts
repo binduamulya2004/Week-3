@@ -82,6 +82,7 @@ export class DashboardComponent implements OnInit {
 
   files: File[] = [];
   isDragging: boolean = false;
+  isModalOpenprofile=false;
 
   constructor(private http: HttpClient, private fb: FormBuilder) {
     this.addProductForm = this.fb.group({
@@ -832,10 +833,14 @@ export class DashboardComponent implements OnInit {
 
   // Open modal to upload profile photo
   openProfilePhotoModal() {
-    this.isModalOpen = true; // Show modal
+    this.isModalOpenprofile = true; // Show modal
   }
   openModal() {
     this.isModalOpen = false;
+  }
+  closeModalprofile(){
+    this.isModalOpenprofile = false;
+    
   }
   // Close themodal
   closeModal() {

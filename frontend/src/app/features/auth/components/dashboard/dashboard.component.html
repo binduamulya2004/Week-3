@@ -25,10 +25,10 @@
                 <!-- Dropdown menu -->
                 <ul class="custom-dropdown-menu" [class.show]="dropdownOpen">
                     <li>
-                        <a class="dropdown-item"  (click)="openProfilePhotoModal()">Upload Profile Photo</a>
+                    <a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#profilePhotoModal">Upload Profile Photo</a>
                     </li>
                     <li>
-                        <a class="dropdown-item"  (click)="logout()">Logout</a>
+                    <a class="dropdown-item" (click)="logout()">Logout</a>
                     </li>
                 </ul>
             </div>
@@ -37,21 +37,24 @@
 </nav>
 
 <!-- Modal for Profile Photo Upload -->
-<div *ngIf="isModalOpen" class="modal-overlay">
-    <div class="modal-content">
+<div class="modal fade" id="profilePhotoModal" tabindex="-1" aria-labelledby="profilePhotoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
         <div class="modal-header">
-            <h5 class="modal-title">Upload Profile Picture</h5>
-            <button type="button" class="close" (click)="closeModal()">×</button>
+          <h5 class="modal-title" id="profilePhotoModalLabel">Upload Profile Picture</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-            <input type="file" (change)="onFileChange($event)" class="form-control mb-2" />
-            <button (click)="uploadProfilePhoto()" [disabled]="isUploading" class="btn btn-primary">
-                {{ isUploading ? 'Uploading...' : 'Upload' }}
-            </button>
+          <input type="file" (change)="onFileChange($event)" class="form-control mb-2" />
+          <button (click)="uploadProfilePhoto()" [disabled]="isUploading" class="btn btn-primary">
+            {{ isUploading ? 'Uploading...' : 'Upload' }}
+          </button>
         </div>
+      </div>
     </div>
-</div>
+  </div>
 
+  
 <!-- complete table -->
 
 <div class="container mt-4 mb-5 border">
