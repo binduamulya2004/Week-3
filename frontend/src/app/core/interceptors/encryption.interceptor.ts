@@ -8,22 +8,20 @@ export class EncryptionInterceptor implements HttpInterceptor {
   private secretKey = 'Tyjeehee734rgehrghjgeerb@758866f';
 
   encryptData(data: any): string {
-    const encrypted = CryptoJS.AES.encrypt(
-      JSON.stringify(data),this.secretKey
-    );
-    const encryptedString = encrypted.toString();
-    console.log('Encrypted Payload (Frontend):', encryptedString);
-  
-    return encrypted.toString();
+    const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), this.secretKey).toString();
+    console.log('Encrypted Payload (Frontend):', encrypted);
+    return encrypted;
   }
-
+  
   decryptData(encryptedData: string): any {
-    const decrypted = CryptoJS.AES.decrypt(
-      encryptedData,this.secretKey
-    );
+    const decrypted = CryptoJS.AES.decrypt(encryptedData, this.secretKey);
     const decryptedText = decrypted.toString(CryptoJS.enc.Utf8);
+    if (!decryptedText) {
+      throw new Error('Decryption resulted in empty string');
+    }
     return JSON.parse(decryptedText);
   }
+  
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     
