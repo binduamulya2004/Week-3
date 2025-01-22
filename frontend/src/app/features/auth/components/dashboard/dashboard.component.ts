@@ -402,6 +402,10 @@ export class DashboardComponent implements OnInit {
         }
       );
   }
+
+
+
+
   // getProducts() {
   //   const params = new HttpParams()
   //     .set('page', '1') // Adjust page dynamically based on user interaction
@@ -430,11 +434,9 @@ export class DashboardComponent implements OnInit {
   // }
 
   getProducts() {
-    let params = new HttpParams()
+    const params = new HttpParams()
       .set('page', this.currentPage.toString())
       .set('limit', this.itemsPerPage.toString());
-
-    // Append search term and selected columns if available
 
     this.http
       .get<{ products: any[]; totalItems: number }>(
@@ -443,10 +445,11 @@ export class DashboardComponent implements OnInit {
       )
       .subscribe(
         (response) => {
-          console.log('Filtered products:', response.products);
+          console.log('products -', response);
           this.products = response.products;
           this.totalItems = response.totalItems;
-          this.paginatedProducts = [...this.products];
+          this.totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
+          this.paginatedProducts = this.products;
         },
         (error) => {
           console.error('Error fetching products:', error);
@@ -1066,7 +1069,6 @@ export class DashboardComponent implements OnInit {
       alert('Please select a file first.');
       return;
     }
-
     const reader = new FileReader();
 
     // Read the file
@@ -1079,9 +1081,9 @@ export class DashboardComponent implements OnInit {
 
         console.log('File data as JSON:', jsonData);
 
-        // Send jsonData directly to the backend
+        // Post the JSON data to the backend
         this.http
-          .post(`${environment.apiUrl}/auth/import`, jsonData)
+          .post(`${environment.apiUrl}/auth/import`, { data: jsonData })
           .subscribe({
             next: (response: any) => {
               alert('Files uploaded and data imported successfully.');

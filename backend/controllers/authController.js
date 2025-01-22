@@ -273,7 +273,7 @@ module.exports = {
   
 
   //get products without search
-    async getProducts(req, res) {
+  async getProducts(req, res) {
     try {
       console.log('req.query:', req.query);
         const { page = 1, limit = 10 } = req.query;
@@ -290,7 +290,9 @@ module.exports = {
         .leftJoin('product_to_vendor', 'products.product_id', '=', 'product_to_vendor.product_id')
         .leftJoin('vendors', 'product_to_vendor.vendor_id', '=', 'vendors.vendor_id')
         .select('products.*', 'categories.category_name', 'vendors.vendor_name')
-        .where('products.status', 1); 
+        .where('products.status', 1)
+        
+       
 
       // Group vendors by product
       const groupedProducts = allProducts.reduce((acc, product) => {
@@ -312,9 +314,11 @@ module.exports = {
 
       // Pagination in-memory
       const totalItems = productList.length;
-      const paginatedProducts = productList.slice(offset, offset + limit);
-
+      console.log(totalItems, 'totalItems');
+      const paginatedProducts = productList.slice(offset, (offset + parseInt(limit)));
       console.log('products array:', paginatedProducts);
+
+        
 
       // Send the paginated products and total count back
       res.json({
