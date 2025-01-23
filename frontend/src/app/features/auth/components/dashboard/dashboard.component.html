@@ -101,7 +101,8 @@
                 </div>
 
                 <!-- Search Bar & Filter Button aligned to the right -->
-                <div class="d-flex justify-content-end mb-3">
+
+                <!-- <div class="d-flex justify-content-end mb-3">
                     <div class="d-flex">
                         <div class="searchTerm"></div>
                         <input type="text" class="form-control" placeholder="Search..." (input)="onSearch($event)"
@@ -125,7 +126,49 @@
                             </div>
                         </div>
                     </div>
+                </div> -->
+
+                <!-- Search Bar & Filter Button aligned to the right -->
+                <div class="d-flex justify-content-end mb-3">
+                    <div class="d-flex">
+                    <div class="searchTerm"></div>
+                    <input
+                        type="text"
+                        class="form-control"
+                        placeholder="Search..."
+                        (input)="searchQuery($event)"
+                        aria-label="Search"
+                        style="height: 38px; width: 250px;"
+                    />
+                    </div>
+                
+                    <div class="filter-dropdown" style="height: 38px; width: 150px;">
+                    <button
+                        class="btn btn-light"
+                        (click)="toggleFilters()"
+                        (click)="$event.stopPropagation()"
+                    >
+                        <i class="bi bi-funnel me-2"></i>
+                        Filters
+                    </button>
+                    <div class="filter-menu" *ngIf="showFilters" (click)="$event.stopPropagation()">
+                        <div class="filter-header">
+                        <h6 class="mb-0">Columns</h6>
+                        </div>
+                        <div class="filter-options">
+                        <label *ngFor="let column of columns" class="filter-option">
+                            <input
+                            type="checkbox"
+                            [checked]="column.checked"
+                            (change)="onColumnToggle(column)"
+                            />
+                            <span>{{ column.label }}</span>
+                        </label>
+                        </div>
+                    </div>
+                    </div>
                 </div>
+  
 
                 <!-- View and Cart Buttons -->
                 <div class="d-flex mb-3">
@@ -301,46 +344,6 @@
         </div>
 
         <!-- Right side of the dashboard -->
-        <!-- <div class="col-md-2 mt-4">
-            <div class="card-header bg-white">
-                <div class="files-upload-container">
-                    <h5>Files Uploaded</h5>
-                    <div class="action-buttons d-flex mb-2">
-                        <button class="btn btn-outline-primary me-2 btn-violet btn-sm"  (click)="downloadAllFile()">Download All</button>
-                        <br>
-                        <button class="btn btn-outline-primary me-2 btn-violet btn-sm" (click)="openModalFile()">Upload</button>
-                    </div>
-                
-                    <div class="file-list">
-                        <div *ngFor="let file of uploadedFiles">
-                            <input type="checkbox" id="{{ file.name }}" (change)="toggleFileSelection(file.name)" />
-                            <label 
-                            for="{{ file.name }}" 
-                            class="file-name-label"
-                            data-bs-toggle="modal" 
-                            data-bs-target="#filePreviewModal"
-                            (click)="previewFile(file.name)"
-                          >
-                            {{ file.name }}
-                          </label>
-                            <small class="text-muted">{{ file.size }} bytes</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="modal" *ngIf="isModalOpen">
-                    <div class="modal-content">
-                        <input type="file" (change)="onFileChange($event)" />
-                        <button (click)="uploadFiles()" data-bs-toggle="modal" dats-bs-target="#profilePictureModal">Upload</button>
-                        <button (click)="closeModalFile()">Cancel</button>
-                    </div>
-                </div>
-            
-                
-            </div>
-        </div> -->
-        
-
         <div class="col-md-2 mt-4">
             <div class="card-header bg-white">
               <div class="files-upload-container">
@@ -352,7 +355,7 @@
                 </div>
           
                 <div class="file-list">
-                  <div *ngFor="let file of uploadedFiles">
+                  <div  *ngFor="let file of uploadedFiles">
                     <input type="checkbox" id="{{ file.name }}" (change)="toggleFileSelection(file.name)" />
                     <label 
                       for="{{ file.name }}" 
@@ -378,7 +381,7 @@
               </div>
             </div>
           </div>
-          
+
     </div>
 </div>
 
@@ -631,7 +634,6 @@
     </div>
 </div>
 
-<!-- Import Modal -->
 
 <!-- Import Modal -->
 <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true"

@@ -45,6 +45,7 @@ export class DashboardComponent implements OnInit {
   isProductModalOpen: boolean = false;
   addProductForm: FormGroup;
   selectedProducts: any[] = [];
+  
   allSelected: boolean = false; // Flag to track if all rows are selected
 
   selectedProductId: number | null = null;
@@ -59,6 +60,8 @@ export class DashboardComponent implements OnInit {
     'Quantity',
     'Unit',
   ];
+
+  //search
   showFilters: boolean = false;
   columns = [
     { label: 'Product Name', key: 'product_name', checked: false },
@@ -68,6 +71,19 @@ export class DashboardComponent implements OnInit {
     { label: 'Quantity', key: 'quantity', checked: false },
     { label: 'Unit', key: 'unit', checked: false },
   ];
+
+
+selectedCategory: string = '';
+selectedVendor: string = '';
+selectedStatus: string = '';
+
+
+
+
+
+
+
+
   quantityChanges: { [key: number]: number } = {};
   flag = 1;
   selectedProductForEdit: any;
@@ -76,7 +92,7 @@ export class DashboardComponent implements OnInit {
   showCart: boolean = false;
   currentCartPage: number = 1;
   totalCartPages: number = 1;
-  cartPageSize: number = 5; // Items per page
+  cartPageSize: number = 5; 
   totalCartItems: number = 0;
   cartPages: number[] = [];
   cartProducts: any[] = [];
@@ -105,7 +121,8 @@ export class DashboardComponent implements OnInit {
     // Get the logged-in user's details after verifying the token
     this.fetchUserDetails();
     this.getVendorsCount();
-    this.getProducts();
+    // this.getProducts();
+    this.loadProducts();
 
     this.getCategories();
     this.getVendors();
@@ -113,9 +130,9 @@ export class DashboardComponent implements OnInit {
     this.fetchUploadedFiles();
   }
   ngDoCheck(): void {
-    console.log('ngDoCheck Called');
+    // console.log('ngDoCheck Called');
     if (!this.showCart && this.flag == 1) {
-      this.applyQuantityChanges(); // Call this when the cart is closed
+      this.applyQuantityChanges(); 
       this.flag = 0;
     }
   }
@@ -132,8 +149,6 @@ export class DashboardComponent implements OnInit {
   updateQuantity(product: any, change: number): void {
     const newQuantity = product.quantity + change;
     console.log('newQuantity:', newQuantity);
-
-    // Only allow non-negative quantities
     if (newQuantity >= 0) {
       product.quantity = newQuantity;
       const initialQuantity = product.initialQuantity || product.quantity;
@@ -141,13 +156,20 @@ export class DashboardComponent implements OnInit {
     }
     console.log('quantityChanges:', this.quantityChanges);
   }
-  adjustQuantity(product: any, change: number): void {
-    const newQuantity = product.currentQuantity + change;
-    if (newQuantity >= 0 && newQuantity <= product.quantity_in_stock) {
-      product.currentQuantity = newQuantity;
-    }
-  }
 
+
+  adjustQuantity(product: product, change: number): void {
+  const newQuantity = product.currentQuantity + change;
+
+  // Ensure the new quantity does not exceed stock and is not negative
+  if (newQuantity >= 0 && newQuantity <= product.quantity_in_stock) {
+    product.currentQuantity = newQuantity;
+  } else if (newQuantity > product.quantity_in_stock) {
+    alert(`You cannot exceed the available stock (${product.quantity_in_stock}).`);
+  } else if (newQuantity < 0) {
+    alert('Quantity cannot be negative.');
+  }
+}
   // fetchCartPage(page: number): void {
   //   if (page < 1 || (this.totalCartPages && page > this.totalCartPages)) return;
 
@@ -220,23 +242,21 @@ export class DashboardComponent implements OnInit {
   }
 
   applyQuantityChanges(): void {
-    // Prepare the payload for the backend with the changes
     const updatedProducts = Object.keys(this.quantityChanges)
-      .filter((product_id) => this.quantityChanges[+product_id] !== 0) // Exclude unchanged quantities
+      .filter((product_id) => this.quantityChanges[+product_id] !== 0) 
       .map((product_id) => ({
         productId: +product_id,
         changeInQuantity: this.quantityChanges[+product_id],
       }));
 
-    // Call the backend to update the quantities in batch
     if (updatedProducts.length > 0) {
       this.http
         .put<any>(`${environment.apiUrl}/auth/cart/update`, updatedProducts)
         .subscribe({
           next: (response) => {
             console.log('Cart items updated successfully:', response);
-            this.fetchCartPage(this.currentCartPage); // Optionally re-fetch the cart items
-            this.quantityChanges = {}; // Clear the changes after a successful update
+            this.fetchCartPage(this.currentCartPage); 
+            this.quantityChanges = {}; 
           },
           error: (error) => {
             console.error('Error updating cart items:', error);
@@ -258,87 +278,56 @@ export class DashboardComponent implements OnInit {
       });
   }
 
-  // moveSelectedProducts(): void {
-  //   const selectedProducts = this.selectedProducts
-  //     .filter((product) => product.isSelected)
-  //     .map((product) => {
-  //       console.log('Product object:', product); // Log to check the structure of the product
-  //       return {
-  //         productId: product.product_id,
-  //         vendorId: product.selectedVendorId,
-  //         quantity: product.quantity_in_stock,
-  //       };
-  //     });
-
-  //   if (selectedProducts.length === 0) {
-  //     alert('Please select at least one product to move.');
-  //     return;
-  //   }
-  //   console.log('Selected products in frontend:', selectedProducts);
-  //   this.http
-  //     .post(`${environment.apiUrl}/auth/move-to-cart`, {
-  //       products: selectedProducts,
-  //     })
-  //     .subscribe({
-  //       next: (response) => {
-  //         // alert('Products moved successfully!');
-  //         this.http
-  //           .post(`${environment.apiUrl}/auth/cart/update`, {
-  //             products: selectedProducts,
-  //           })
-  //           .subscribe({
-  //             next: (response) => {
-  //               alert(
-  //                 'Products moved successfully! And cart updated successfully!'
-  //               );
-  //             },
-  //             error: (error) => {
-  //               alert('Failed to update cart.');
-  //               console.error('Error update cart:', error);
-  //             },
-  //           });
-  //       },
-  //       error: (error) => {
-  //         alert('Failed to move products.');
-  //         console.error('Error moving products to cart:', error);
-  //       },
-  //     });
-  // }
-
   moveSelectedProducts(): void {
     const selectedProducts = this.selectedProducts
       .filter((product) => product.isSelected)
-      .map((product) => ({
-        user_id: this.userId,
-        product_id: product.product_id,
-        vendor_id: product.selectedVendorId,
-        quantity: product.currentQuantity,
-      }));
-    console.log('Selected products in frontend:', selectedProducts);
+      .map((product) => {
+        console.log('Product object:', product); // Log to check the structure of the product
+        return {
+          productId: product.product_id,
+          vendorId: product.selectedVendorId,
+          quantity: product.quantity_in_stock,
+        };
+      });
 
     if (selectedProducts.length === 0) {
       alert('Please select at least one product to move.');
       return;
     }
-
+    console.log('Selected products in frontend:', selectedProducts);
     this.http
       .post(`${environment.apiUrl}/auth/move-to-cart`, {
         products: selectedProducts,
       })
-      .subscribe(
-        (response) => {
-          console.log('Products moved to cart:', response);
-          //this.closeModal('moveToModal');
-          alert('Products moved successfully!');
-          // Optionally refresh products or update UI
-          this.fetchCartPage(this.currentCartPage);
+      .subscribe({
+        next: (response) => {
+          // alert('Products moved successfully!');
+          this.http
+            .post(`${environment.apiUrl}/auth/cart/update`, {
+              products: selectedProducts,
+            })
+            .subscribe({
+              next: (response) => {
+                alert(
+                  'Products moved successfully! And cart updated successfully!'
+                );
+              },
+              error: (error) => {
+                alert('Failed to update cart.');
+                console.error('Error update cart:', error);
+              },
+            });
         },
-        (error) => {
-          console.error('Error moving products to cart:', error);
+        error: (error) => {
           alert('Failed to move products.');
-        }
-      );
+          console.error('Error moving products to cart:', error);
+        },
+      });
   }
+
+  
+  
+
 
   clearSelectedProducts() {
     this.selectedProducts = [];
@@ -370,16 +359,16 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  // Toggle selected columns
-  onColumnToggle(column: any) {
-    column.checked = !column.checked;
+  // // Toggle selected columns
+  // onColumnToggle(column: any) {
+  //   column.checked = !column.checked;
 
-    // Update selected columns and fetch data based on filters
-    const selectedColumnsKeys = this.columns
-      .filter((col) => col.checked)
-      .map((col) => col.key);
-    console.log('Selected columns:', selectedColumnsKeys);
-  }
+  //   // Update selected columns and fetch data based on filters
+  //   const selectedColumnsKeys = this.columns
+  //     .filter((col) => col.checked)
+  //     .map((col) => col.key);
+  //   console.log('Selected columns:', selectedColumnsKeys);
+  // }
 
   // Get filtered products with search term and selected columns
   getFilteredProducts(searchTerm: string, columns: string): void {
@@ -500,6 +489,7 @@ export class DashboardComponent implements OnInit {
             alert(response.message); // Success message from the backend
             // Update the UI to reflect the deletion
             this.getProducts();
+
           },
           (error) => {
             alert('Failed to delete the product');
@@ -807,7 +797,8 @@ export class DashboardComponent implements OnInit {
   previousPage() {
     if (this.currentPage > 1) {
       this.currentPage--;
-      this.getProducts();
+      // this.getProducts();
+      this.loadProducts();
     }
   }
 
@@ -815,7 +806,8 @@ export class DashboardComponent implements OnInit {
   nextPage() {
     if (this.currentPage < this.totalPages) {
       this.currentPage++;
-      this.getProducts();
+      // this.getProducts();
+      this.loadProducts();
     }
   }
 
@@ -1173,25 +1165,104 @@ previewFile(fileName: string) {
   }
 
 
+  searchQuery(event: any) {
+    this.searchTerm = event.target.value.toLowerCase();
+    this.loadProducts();
+  }
 
+// Toggle selected columns
+onColumnToggle(column: any) {
+  column.checked = !column.checked;
+  this.applyFilters();
+}
+
+// Apply Filters
+applyFilters(): void {
+  this.loadProducts();
+}
+// Load Products with Filters
+loadProducts(): void {
+  const params = new HttpParams()
+    .set('page', this.currentPage.toString())
+    .set('limit', this.itemsPerPage.toString());
+
+  this.http
+    .get<{ products: any[]; totalItems: number }>(
+      `${environment.apiUrl}/auth/products`,
+      { params }
+    )
+    .subscribe({
+      next: (response) => {
+        let filteredProducts = response.products;
+       console.log('****',filteredProducts);
+
+        // Ensure 'vendors' is always an array of strings
+        filteredProducts = filteredProducts.map((product) => {
+          if (typeof product.vendors === 'string') {
+            product.vendors = [product.vendors]; // Convert single string to array
+          }
+          return product;
+        });
+
+        this.totalPages = Math.ceil(response.totalItems / this.itemsPerPage);
+
+        // Apply search filter
+          if (this.searchTerm) {
+            filteredProducts = filteredProducts.filter(
+              (product) =>
+                (product.product_name && product.product_name.toLowerCase().includes(this.searchTerm.toLowerCase())) ||
+                (product.category_name && product.category_name.toLowerCase().includes(this.searchTerm.toLowerCase())) ||
+                (product.vendors && product.vendors.some((vendor: string) =>
+                  vendor.toLowerCase().includes(this.searchTerm.toLowerCase())
+                ))
+            );
+          }
+
+        // Apply selected filters
+        if (this.selectedCategory) {
+          filteredProducts = filteredProducts.filter(
+            (product) => product.category_name === this.selectedCategory
+          );
+        }
+
+        if (this.selectedVendor) {
+          filteredProducts = filteredProducts.filter(
+            (product) => product.vendors.includes(this.selectedVendor)
+          );
+        }
+
+        if (this.selectedStatus !== '') {
+          filteredProducts = filteredProducts.filter(
+            (product) => product.status === this.selectedStatus
+          );
+        }
+
+        this.products = filteredProducts;
+      },
+      error: (error) => {
+        console.error('Error fetching products:', error);
+      },
+    });
+}
 
 }
 
 export interface product {
+vendor_id: any;
+vendors: any;
+isEditing: any;
   product_id: number;
-  product_name: string;
-  category_id: number;
-  quantity_in_stock: number;
-  unit_price: number;
-  product_image: string;
-  product_status: string;
-  unit: string;
-  vendor_id: number;
-  selectedFile: File | null;
-  isEditing: boolean;
-  originalData: any;
-  selectedVendorId: number;
-  isSelected: boolean;
-  selected: boolean;
-  initialQuantity: number;
+    category_id: number; 
+    category_name: string;
+    category_status: number;
+    unit_price: number;
+    currentQuantity:number;
+    isSelected: boolean;
+    selectedVendorId : number|null;
+    selectedVendorIds : number[]| [];
+    product_image: string;
+    product_name: string;
+    product_status: number;
+    quantity_in_stock: number;
+    unit: string;
 }

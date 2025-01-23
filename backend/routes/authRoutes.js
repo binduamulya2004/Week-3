@@ -54,4 +54,3 @@ router.post('/download',authenticate, authController.downloadFiles);
 router.post('/import', authenticate, upload.single('file'), authController.importFile);
 
 module.exports = router;
-
