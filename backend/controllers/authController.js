@@ -117,7 +117,7 @@ module.exports = {
       // Store refresh token in the database
       await refreshTokenModel.storeRefreshToken(user.user_id, refreshToken);
 
-      res.status(200).json({ accessToken, refreshToken, user });
+      res.status(200).json({ accessToken, refreshToken, userId: user.user_id });
     } catch (err) {
       next(err);
     }
@@ -1132,11 +1132,11 @@ module.exports = {
     if (!file || !userId) return res.status(400).json({ error: 'File or User ID missing' });
 
     try {
-      const fileName = `${userId}_${Date.now()}_${file.originalname}`;
+      const fileName = `${file.originalname}`;
       const fileBuffer = await sharp(file.buffer).resize(800, 800).toBuffer();
       const fileUrl = await uploadToS3(fileBuffer, fileName, file.mimetype, userId);
 
-      res.status(200).json({ message: 'File uploaded successfully', fileUrl });
+      res.status(200).json({ message: 'File uploaded successfully', fileUrl , fileName: file.originalname});
     } catch (error) {
       console.error('Error uploading file:', error);
       res.status(500).json({ error: 'Failed to upload file' });

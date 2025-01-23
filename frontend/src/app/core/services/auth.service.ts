@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { environment } from 'src/environments/environment';
 
 @Injectable({
@@ -15,11 +15,17 @@ export class AuthService {
   register(userData: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/auth/signup`, userData);
   }
-
-  // Login an existing user
-  login(credentials: { email: string; password: string }): Observable<any> {
-    return this.http.post(`${this.apiUrl}/auth/login`, credentials);
-  }
+ // Login an existing user
+ login(credentials: { email: string; password: string }): Observable<any> {
+  return this.http.post(`${this.apiUrl}/auth/login`, credentials).pipe(
+    tap((response: any) => {
+      // Assuming the response contains the user ID, access token, and refresh token
+      localStorage.setItem('userId', response.userId);
+      localStorage.setItem('accessToken', response.accessToken);
+      localStorage.setItem('refreshToken', response.refreshToken);
+    })
+  );
+}
 
   // Refresh access token
   refreshToken(): Observable<any> {
@@ -52,5 +58,15 @@ export class AuthService {
   clearTokens(): void {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+  }
+  // Get user ID from local storage
+  getUserId(): string | null {
+    return localStorage.getItem('userId');
+  }
+  uploadFile(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+  
+    return this.http.post(`${this.apiUrl}/auth/upload-file`, formData);
   }
 }

@@ -301,7 +301,7 @@
         </div>
 
         <!-- Right side of the dashboard -->
-        <div class="col-md-2 mt-4">
+        <!-- <div class="col-md-2 mt-4">
             <div class="card-header bg-white">
                 <div class="files-upload-container">
                     <h5>Files Uploaded</h5>
@@ -314,7 +314,15 @@
                     <div class="file-list">
                         <div *ngFor="let file of uploadedFiles">
                             <input type="checkbox" id="{{ file.name }}" (change)="toggleFileSelection(file.name)" />
-                            <label for="{{ file.name }}">{{ file.name }}</label>
+                            <label 
+                            for="{{ file.name }}" 
+                            class="file-name-label"
+                            data-bs-toggle="modal" 
+                            data-bs-target="#filePreviewModal"
+                            (click)="previewFile(file.name)"
+                          >
+                            {{ file.name }}
+                          </label>
                             <small class="text-muted">{{ file.size }} bytes</small>
                         </div>
                     </div>
@@ -330,11 +338,89 @@
             
                 
             </div>
-        </div>
+        </div> -->
         
+
+        <div class="col-md-2 mt-4">
+            <div class="card-header bg-white">
+              <div class="files-upload-container">
+                <h5>Files Uploaded</h5>
+                <div class="action-buttons d-flex mb-2">
+                  <button class="btn btn-outline-primary me-2 btn-violet btn-sm" (click)="downloadAllFile()">Download All</button>
+                  <br>
+                  <button class="btn btn-outline-primary me-2 btn-violet btn-sm" (click)="openModalFile()">Upload</button>
+                </div>
+          
+                <div class="file-list">
+                  <div *ngFor="let file of uploadedFiles">
+                    <input type="checkbox" id="{{ file.name }}" (change)="toggleFileSelection(file.name)" />
+                    <label 
+                      for="{{ file.name }}" 
+                      class="file-name-label"
+                      (click)="preventCheckboxToggle($event)"
+                      data-bs-toggle="modal" 
+                      data-bs-target="#filePreviewModal"
+                      (click)="previewFile(file.name)"
+                    >
+                      {{ file.name }}
+                    </label>
+                    <small class="text-muted">{{ file.size }} bytes</small>
+                  </div>
+                </div>
+              </div>
+          
+              <div class="modal" *ngIf="isModalOpen">
+                <div class="modal-content">
+                  <input type="file" (change)="onFileChange($event)" />
+                  <button (click)="uploadFiles()" data-bs-toggle="modal" data-bs-target="#profilePictureModal">Upload</button>
+                  <button (click)="closeModalFile()">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
     </div>
 </div>
 
+
+<!-- File Preview Modal -->
+<div
+  class="modal fade"
+  id="filePreviewModal"
+  tabindex="-1"
+  aria-labelledby="filePreviewModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filePreviewModalLabel">File Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Preview Content -->
+        <ng-container *ngIf="previewFileUrl; else noPreview">
+          <div *ngIf="isImage(previewFileUrl)">
+            <img [src]="previewFileUrl" alt="Image Preview" class="img-fluid" />
+          </div>
+          <div *ngIf="isPDF(previewFileUrl)">
+            <iframe
+              [src]="previewFileUrl"
+              width="100%"
+              height="500px"
+            ></iframe>
+          </div>
+          <div *ngIf="!isImage(previewFileUrl) && !isPDF(previewFileUrl)">
+            <p>Preview not available for this file type.</p>
+          </div>
+        </ng-container>
+        <ng-template #noPreview>
+          <p>No file selected for preview.</p>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+</div>
 
 
 <!-- Add Product Modal -->

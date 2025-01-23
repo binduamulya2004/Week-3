@@ -10,6 +10,8 @@ import { jsPDF } from 'jspdf';
 import * as bootstrap from 'bootstrap';
 import { Observable } from 'rxjs';
 import { log } from 'console';
+import {AuthService} from 'src/app/core/services/auth.service';
+import { DomSanitizer } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-dashboard',
@@ -79,12 +81,15 @@ export class DashboardComponent implements OnInit {
   cartPages: number[] = [];
   cartProducts: any[] = [];
   userId: any;
+  
 
   files: File[] = [];
   isDragging: boolean = false;
   isModalOpenprofile=false;
 
-  constructor(private http: HttpClient, private fb: FormBuilder) {
+  previewFileUrl: string | null = null;
+
+  constructor(private http: HttpClient, private fb: FormBuilder,private authService: AuthService,private sanitizer: DomSanitizer) {
     this.addProductForm = this.fb.group({
       productName: ['', Validators.required],
       category: ['', Validators.required],
@@ -511,22 +516,33 @@ export class DashboardComponent implements OnInit {
   }
 
   downloadProduct(product: any) {
+    console.log('Product to download:', product);
     const doc = new jsPDF();
-
+  
     // Extract product details excluding image
-    const { product_id, product_name, price, description, vendor_name } =
-      product;
-
+    const { product_id, product_name, category_name, unit_price, vendors } = product;
+  
     // Add product details to the PDF
     doc.text('Product Details', 20, 20);
     doc.text(`Product ID: ${product_id}`, 20, 30);
     doc.text(`Product Name: ${product_name}`, 20, 40);
-    doc.text(`Price: ${price}`, 20, 50);
-    doc.text(`Description: ${description}`, 20, 60);
-    doc.text(`Vendor: ${vendor_name}`, 20, 70);
+    doc.text(`Price: ${unit_price}`, 20, 50);
+    doc.text(`Category: ${category_name}`, 20, 60);
+  
+    // Add vendors details
+    doc.text('Vendors:', 20, 70);
+    if (vendors && Array.isArray(vendors) && vendors.length > 0) {
+      vendors.forEach((vendor: any, index: number) => {
+        doc.text(`${index + 1}. ${vendor}`, 30, 80 + index * 10); // Adjust Y position dynamically
+      });
+    } else {
+      doc.text('No vendors available', 30, 80);
+    }
+  
     // Save the PDF
     doc.save(`${product_name}_${product_id}.pdf`);
   }
+  
 
   editProduct(product: any) {
     product.isEditing = true;
@@ -562,7 +578,8 @@ export class DashboardComponent implements OnInit {
             formData.append('product_image', product.selectedFile);
             formData.append('productId', product.product_id); // Include product ID in the form data
 
-            const token = localStorage.getItem('token');
+            const token = this.authService.getAccessToken();
+
             const headers = new HttpHeaders({
               Authorization: `Bearer ${token}`,
             });
@@ -706,7 +723,7 @@ export class DashboardComponent implements OnInit {
               formData.append('product_image', this.selectedFile);
               formData.append('productId', newProduct.product_id); // Include product ID in the form data
 
-              const token = localStorage.getItem('token');
+              const token = this.authService.getAccessToken();
               const headers = new HttpHeaders({
                 Authorization: `Bearer ${token}`,
               });
@@ -808,7 +825,8 @@ export class DashboardComponent implements OnInit {
 
   // Method to verify the token and retrieve user details
   fetchUserDetails() {
-    const token = localStorage.getItem('token');
+    const token = this.authService.getAccessToken();
+
 
     if (token) {
       const headers = new HttpHeaders({
@@ -840,7 +858,7 @@ export class DashboardComponent implements OnInit {
   }
   closeModalprofile(){
     this.isModalOpenprofile = false;
-    
+
   }
   // Close themodal
   closeModal() {
@@ -867,7 +885,7 @@ export class DashboardComponent implements OnInit {
     const formData = new FormData();
     formData.append('profile_pic', this.selectedFile);
 
-    const token = localStorage.getItem('token');
+    const token = this.authService.getAccessToken();
     const headers = new HttpHeaders({
       Authorization: `Bearer ${token}`,
     });
@@ -893,13 +911,13 @@ export class DashboardComponent implements OnInit {
 
   // Logout method to clear localStorage and redirect to login page
   logout(): void {
-    localStorage.clear(); // Clear the local storage
+    this.authService.clearTokens();
     window.location.href = '/login'; // Redirect to login page
   }
 
   //right side of the container
   fetchUploadedFiles() {
-    const token = localStorage.getItem('token');
+   const token = this.authService.getAccessToken();
     const headers = new HttpHeaders({
       Authorization: `Bearer ${token}`,
     });
@@ -968,7 +986,7 @@ export class DashboardComponent implements OnInit {
       const formData = new FormData();
       console.log(formData);
       formData.append('file', this.selectedFile);
-      const token = localStorage.getItem('token');
+      const token = this.authService.getAccessToken();
       const headers = new HttpHeaders({
         Authorization: `Bearer ${token}`,
       });
@@ -979,6 +997,8 @@ export class DashboardComponent implements OnInit {
         })
         .subscribe(
           (response) => {
+            const fileName = (response as { fileName: string }).fileName;
+            this.storeFileName(fileName); // Store fileName in local storage
             this.fetchUploadedFiles(); // Refresh the file list after upload
             this.closeModal();
           },
@@ -987,6 +1007,13 @@ export class DashboardComponent implements OnInit {
           }
         );
     }
+  }
+
+   // Store file name in local storage
+   storeFileName(fileName: string) {
+    let fileNames = JSON.parse(localStorage.getItem('fileNames') || '[]');
+    fileNames.push(fileName);
+    localStorage.setItem('fileNames', JSON.stringify(fileNames));
   }
 
   // Handle the selection of files for download
@@ -1055,6 +1082,11 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  
+  // Prevent checkbox toggle when clicking on the label
+  preventCheckboxToggle(event: Event) {
+    event.preventDefault();
+  }
   // Download individual file
   downloadFile(fileUrl: string) {
     const link = document.createElement('a');
@@ -1115,6 +1147,34 @@ export class DashboardComponent implements OnInit {
   uploadFilesImport(): void {
     this.uploadFilesforimport();
   }
+
+// Preview file
+previewFile(fileName: string) {
+  const userId = this.authService.getUserId();
+
+  if (!userId || !fileName) {
+    console.error('User ID or file name is undefined');
+    return;
+  }
+
+  const fileUrl = `https://${environment.awsBucketName}.s3.${environment.awsRegion}.amazonaws.com/bindu@AKV0796/${userId}/${fileName}`;
+  console.log('File URL:', fileUrl); // Debugging purpose
+  this.previewFileUrl = fileUrl;
+}
+
+  // Check if the file is an image
+  isImage(url: string): boolean {
+    return /\.(jpg|jpeg|png|gif|bmp)$/i.test(url);
+  }
+
+  // Check if the file is a PDF
+  isPDF(url: string): boolean {
+    return /\.pdf$/i.test(url);
+  }
+
+
+
+
 }
 
 export interface product {
