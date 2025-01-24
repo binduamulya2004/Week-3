@@ -4,6 +4,7 @@ const router = express.Router();
 const authenticate = require('../middleware/jwt/authenticate');
 const jwtAuth = require('../middleware/jwt/jwtAuth');
 const multer = require('multer');
+const mailController=require('../controllers/mailControllers');
 
 // Set up multer for file uploads
 const storage = multer.memoryStorage(); // Store files in memory
@@ -52,5 +53,11 @@ router.post('/download',authenticate, authController.downloadFiles);
 
 // Import routes
 router.post('/import', authenticate, upload.single('file'), authController.importFile);
+
+
+
+router.post('/forgot-password',mailController.forgotPassword);
+
+router.post('/reset-password/:id/:accessToken',mailController.resetPassword);
 
 module.exports = router;

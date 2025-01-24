@@ -84,10 +84,7 @@ export class LoginComponent {
           }
         },
         (error: any) => {
-          this.toastr.error(
-            'Login failed. Please check your credentials and try again.',
-            'Error'
-          );
+         alert('Login failed. Please check your credentials and try again.');
           console.error('Login failed', error);
         }
       );
@@ -96,5 +93,8 @@ export class LoginComponent {
 
   redirectToRegister(): void {
     this.router.navigate(['/register']);
+  }
+  redirectToForgetPassword(){
+    this.router.navigate(['/forgetpassword'])
   }
 }

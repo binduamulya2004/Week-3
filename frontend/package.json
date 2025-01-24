@@ -23,6 +23,7 @@
     "crypto-js": "^4.2.0",
     "jspdf": "^2.5.2",
     "ngx-toastr": "^15.0.0",
+    "node-mailer": "^0.1.1",
     "rxjs": "~7.5.0",
     "sharp": "^0.33.5",
     "toastr": "^2.1.4",

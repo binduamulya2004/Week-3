@@ -14,6 +14,8 @@ import { CommonModule } from '@angular/common';
 import { ToastrModule } from 'ngx-toastr';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { EncryptionInterceptor } from './core/interceptors/encryption.interceptor';
+import { ForgetpasswordComponent } from './features/auth/components/forgetpassword/forgetpassword.component';
+import { ResetpasswordComponent } from './features/auth/components/resetpassword/resetpassword.component';
 
 
 // import { ToastrModule } from 'ngx-toastr';
@@ -23,6 +25,10 @@ import { EncryptionInterceptor } from './core/interceptors/encryption.intercepto
     RegisterComponent,
     LoginComponent,
     DashboardComponent,
+    ForgetpasswordComponent,
+    ResetpasswordComponent
+    
+    
   ],
   imports: [
     BrowserModule,

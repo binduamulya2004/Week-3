@@ -105,10 +105,14 @@ module.exports = {
   async login(req, res, next) {
     try {
       const { email, password } = req.body;
+      console.log(email);
+      console.log(password);
       const user = await userModel.findByEmail(email);
       if (!user) return res.status(400).json({ message: 'Invalid email or password' });
 
       const isValidPassword = await bcrypt.compare(password, user.password);
+      console.log(user.password);
+      console.log(isValidPassword);
       if (!isValidPassword) return res.status(400).json({ message: 'Invalid email or password' });
 
       const accessToken = generateAccessToken(user);
@@ -712,7 +716,14 @@ module.exports = {
   try {
     await knex.transaction(async (trx) => {
       for (const product of products) {
-        const { product_id, vendor_id, quantity } = product;
+        // const { product_id, vendor_id, quantity } = product;
+        const product_id=product.productId;
+        const vendor_id=product.vendorId;
+        const quantity=product.quantity;
+        console.log('****',product_id);
+        console.log("****", vendor_id);
+        console.log("****", quantity);
+
          const user_id = req.user.id;
         // Insert or update the cart entry
         const existingCartItem = await trx('carts')

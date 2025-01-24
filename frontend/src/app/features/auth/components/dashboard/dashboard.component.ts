@@ -13,6 +13,7 @@ import { log } from 'console';
 import {AuthService} from 'src/app/core/services/auth.service';
 import { DomSanitizer } from '@angular/platform-browser';
 
+
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
@@ -146,10 +147,10 @@ selectedStatus: string = '';
     }
   }
 
-  updateQuantity(product: any, change: number): void {
-    const newQuantity = product.quantity + change;
+  updateQuantity(product:any, change: number): void {
+    const newQuantity = product.quantity_in_stock + change;
     console.log('newQuantity:', newQuantity);
-    if (newQuantity >= 0) {
+    if (newQuantity >= 0){
       product.quantity = newQuantity;
       const initialQuantity = product.initialQuantity || product.quantity;
       this.quantityChanges[product.product_id] = newQuantity - initialQuantity;
@@ -159,7 +160,7 @@ selectedStatus: string = '';
 
 
   adjustQuantity(product: product, change: number): void {
-  const newQuantity = product.currentQuantity + change;
+  const newQuantity = product.quantity_in_stock + change;
 
   // Ensure the new quantity does not exceed stock and is not negative
   if (newQuantity >= 0 && newQuantity <= product.quantity_in_stock) {
@@ -289,6 +290,7 @@ selectedStatus: string = '';
           quantity: product.quantity_in_stock,
         };
       });
+      
 
     if (selectedProducts.length === 0) {
       alert('Please select at least one product to move.');
@@ -359,16 +361,7 @@ selectedStatus: string = '';
     }
   }
 
-  // // Toggle selected columns
-  // onColumnToggle(column: any) {
-  //   column.checked = !column.checked;
-
-  //   // Update selected columns and fetch data based on filters
-  //   const selectedColumnsKeys = this.columns
-  //     .filter((col) => col.checked)
-  //     .map((col) => col.key);
-  //   console.log('Selected columns:', selectedColumnsKeys);
-  // }
+ 
 
   // Get filtered products with search term and selected columns
   getFilteredProducts(searchTerm: string, columns: string): void {
@@ -399,35 +392,6 @@ selectedStatus: string = '';
   }
 
 
-
-
-  // getProducts() {
-  //   const params = new HttpParams()
-  //     .set('page', '1') // Adjust page dynamically based on user interaction
-  //     .set('limit', '10') // Adjust this as needed
-  //     .set('searchTerm', this.searchTerm)
-  //     .set('columns', this.selectedColumns.join(',') || '*'); // If no columns selected, send '*' for all
-  //   console.log('@@@@@@');
-  //   console.log(params);
-  //   this.http
-  //     .get<{ products: any[]; totalItems: number }>(
-  //       `${environment.apiUrl}/auth/products`,
-  //       { params }
-  //     )
-  //     .subscribe(
-  //       (response) => {
-  //         console.log('products -', response);
-  //         this.products = response.products;
-  //         this.totalItems = response.totalItems;
-  //         this.totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
-  //         this.paginatedProducts = this.products;
-  //       },
-  //       (error) => {
-  //         console.error('Error fetching products:', error);
-  //       }
-  //     );
-  // }
-
   getProducts() {
     const params = new HttpParams()
       .set('page', this.currentPage.toString())
@@ -452,25 +416,7 @@ selectedStatus: string = '';
       );
   }
 
-  //  getProducts() {
-  //   const params = new HttpParams()
-  //     .set('page', this.currentPage.toString())
-  //     .set('limit', this.itemsPerPage.toString());
-
-  //   this.http.get<{ products: any[], totalItems: number }>(`${environment.apiUrl}/auth/products`, { params })
-  //     .subscribe(
-  //       (response) => {
-  //         console.log("products -", response)
-  //         this.products = response.products;
-  //         this.totalItems = response.totalItems;
-  //         this.totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
-  //         this.paginatedProducts = this.products;
-  //       },
-  //       (error) => {
-  //         console.error('Error fetching products:', error);
-  //       }
-  //     );
-  // }
+  
   showDeleteModal(product: any) {
     this.selectedProductId = product.product_id; // Store the product ID to delete
     const modal = new bootstrap.Modal(
@@ -781,17 +727,7 @@ selectedStatus: string = '';
         }
       );
   }
-  //all products
-  // getProducts() {
-  //   this.http.get<any[]>(`${environment.apiUrl}/auth/products`).subscribe(
-  //     (products) => {
-  //       this.products = products; // Update products array
-  //     },
-  //     (error) => {
-  //       console.error('Error fetching products:', error);
-  //     }
-  //   );
-  // }
+  
 
   // Navigate to the previous page
   previousPage() {
@@ -857,7 +793,7 @@ selectedStatus: string = '';
     this.isModalOpen = false; // Hide modal
   }
 
-  // Handle file selection
+
   //The onFileChange method is an event handler that is triggered whenever the user selects a file using the <input type="file"> element.
   onFileChange(event: any) {
     const file = event.target.files[0]; // Get the first selected file
@@ -1180,7 +1116,9 @@ onColumnToggle(column: any) {
 applyFilters(): void {
   this.loadProducts();
 }
-// Load Products with Filters
+
+
+// Load Products with dynamic filtering based on selected columns
 loadProducts(): void {
   const params = new HttpParams()
     .set('page', this.currentPage.toString())
@@ -1194,7 +1132,7 @@ loadProducts(): void {
     .subscribe({
       next: (response) => {
         let filteredProducts = response.products;
-       console.log('****',filteredProducts);
+        console.log('****', filteredProducts);
 
         // Ensure 'vendors' is always an array of strings
         filteredProducts = filteredProducts.map((product) => {
@@ -1206,43 +1144,59 @@ loadProducts(): void {
 
         this.totalPages = Math.ceil(response.totalItems / this.itemsPerPage);
 
-        // Apply search filter
-          if (this.searchTerm) {
-            filteredProducts = filteredProducts.filter(
-              (product) =>
-                (product.product_name && product.product_name.toLowerCase().includes(this.searchTerm.toLowerCase())) ||
-                (product.category_name && product.category_name.toLowerCase().includes(this.searchTerm.toLowerCase())) ||
-                (product.vendors && product.vendors.some((vendor: string) =>
-                  vendor.toLowerCase().includes(this.searchTerm.toLowerCase())
-                ))
-            );
-          }
-
-        // Apply selected filters
+        // Apply selected category filter first
         if (this.selectedCategory) {
           filteredProducts = filteredProducts.filter(
             (product) => product.category_name === this.selectedCategory
           );
         }
 
+        // Apply search filtering based on checked columns
+        if (this.searchTerm) {
+          filteredProducts = filteredProducts.filter((product) => {
+            return this.columns.some(column => 
+              column.checked && this.filterByColumn(product, column.key)
+            );
+          });
+        }
+
+        // Apply selected vendor filter
         if (this.selectedVendor) {
           filteredProducts = filteredProducts.filter(
             (product) => product.vendors.includes(this.selectedVendor)
           );
         }
 
+        // Apply selected status filter
         if (this.selectedStatus !== '') {
           filteredProducts = filteredProducts.filter(
             (product) => product.status === this.selectedStatus
           );
         }
 
+        // Update the products list
         this.products = filteredProducts;
       },
       error: (error) => {
         console.error('Error fetching products:', error);
       },
     });
+}
+
+// Filter based on the selected column
+filterByColumn(product: any, key: string): boolean {
+  const searchTermLower = this.searchTerm.toLowerCase();
+
+  if (key === 'vendors') {
+    // Check vendors array against search term
+    return product.vendors && product.vendors.some((vendor: string) => vendor.toLowerCase().includes(searchTermLower));
+  } else if (key === 'category') {
+    // Check category against search term; ensure it's looking in the correct property
+    return product.category_name && product.category_name.toLowerCase().includes(searchTermLower);
+  }
+
+  // Default case for other fields
+  return product[key] && product[key].toString().toLowerCase().includes(searchTermLower);
 }
 
 }
