@@ -15,16 +15,18 @@ const forgotPassword = async (req,res) => {
    
     const accessToken = jwt.sign({ id: user.user_id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-      const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,
-        secure: false,
+    const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',        // Gmail's SMTP server
+        port: 587,                     // Port number for non-secure connection (STARTTLS)
+                                        // port: 465,  // SSL/TLS port for Gmail
+        secure: false,                 // Indicates whether to use a secure connection (SSL/TLS). For Gmail, use 'false' with port 587 (STARTTLS).
         auth: {
-          user: process.env.EMAIL,
-          pass: process.env.EMAIL_APP_PASSWORD
+          user: process.env.EMAIL,    // Gmail email address (pulled from environment variables)
+          pass: process.env.EMAIL_APP_PASSWORD // Gmail app password (pulled from environment variables)
         },
-        debug: true
+        debug: true                    // Enables debugging logs for troubleshooting
       });
+      
    
       // Verify connection configuration
       transporter.verify(function(error, success) {
@@ -35,7 +37,7 @@ const forgotPassword = async (req,res) => {
       });
    
       const link = `http://localhost:4200/reset-password/${user.user_id}/${accessToken}`;
-   
+    
       const mailOptions = {
         from: `"Password Reset" <${process.env.EMAIL}>`,
         to: email,

@@ -38,7 +38,7 @@ router.delete('/products/:productId', authController.deleteProduct);
 //cart routes
 router.post('/move-to-cart',authenticate, authController.moveToCart);
 router.get('/cart', authenticate, authController.getCartItems);
-router.put('/cart/update', authenticate, authController.updateCartItemQuantity);
+router.post('/cart/update', authenticate, authController.updateCartItemQuantity);
 router.delete('/delete-cart-item/:cartId', authenticate, authController.deleteCartItem);
 
 
@@ -59,5 +59,8 @@ router.post('/import', authenticate, upload.single('file'), authController.impor
 router.post('/forgot-password',mailController.forgotPassword);
 
 router.post('/reset-password/:id/:accessToken',mailController.resetPassword);
+
+
+router.put('/update-cart-quantity', authenticate, authController.updateCartQty)
 
 module.exports = router;

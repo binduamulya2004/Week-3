@@ -272,7 +272,7 @@
                                         (click)="updateQuantity(product, -1)">-</button>
                                     <span>{{ product.quantity }}</span>
                                     <button class="btn btn-outline-secondary btn-sm"
-                                        (click)="updateQuantity(product, 1)">+</button>
+                                        (click)="updateQuantity(product, +1)">+</button>
                                 </td>
                                 <td>
                                     <!-- Delete icon instead of text -->
@@ -427,15 +427,18 @@
                         </select>
                     </div>
 
-                    <!-- Vendor -->
-                    <div class="mb-3">
-                        <label for="vendor" class="form-label">Vendor</label>
-                        <select id="vendor" class="form-select" formControlName="vendor">
-                            <option *ngFor="let vendor of vendors" [value]="vendor.vendor_id">
-                                {{ vendor.vendor_name }}
-                            </option>
-                        </select>
-                    </div>
+                   
+
+                            <!-- Vendor -->
+                            <div class="mb-3">
+                                <label for="vendor" class="form-label">Vendors</label>
+                                <select id="vendor" class="form-select" formControlName="vendor" multiple>
+                                    <option *ngFor="let vendor of vendors" [value]="vendor.vendor_id">
+                                        {{ vendor.vendor_name }}
+                                    </option>
+                                </select>
+                            </div>
+
 
                     <!-- Quantity -->
                     <div class="mb-3">

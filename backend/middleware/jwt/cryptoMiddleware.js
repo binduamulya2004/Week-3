@@ -33,6 +33,7 @@ function decryptMiddleware(req, res, next) {
         const decryptedData = decryptData(req.body.encryptedPayload);
         req.body = decryptedData; // Replace req.body with decrypted data
         console.log('Decrypted Payload (Backend):', req.body);
+        console.log('actual payload (backend):', decryptedData);
       }
       next();
     } catch (error) {

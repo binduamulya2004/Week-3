@@ -24,6 +24,9 @@ const deleteProduct = (productId) => {
 const createProductToVendor = (productToVendorData) => {
   return knex('product_to_vendor').insert(productToVendorData);
 };
+const createProductToVendorBulk= (productToVendorData) =>{
+    return knex('product_to_vendor').insert(productToVendorData);
+};
 
 
 module.exports = {
@@ -32,5 +35,6 @@ module.exports = {
     createProduct,
     updateProduct,
     deleteProduct,
-    createProductToVendor
+    createProductToVendor,
+    createProductToVendorBulk
 };

@@ -403,58 +403,81 @@ module.exports = {
     }
   },
 
+  
   async addProduct(req, res, next) {
     try {
-      const { productName, category, vendor, quantity, unitPrice, unit, status } = req.body;
-      let productImage = null;
+        // Extract and validate the payload structure
+        const { productData, vendors } = req.body;
 
-      if (req.file) {
-        // Process the image with Sharp (resize and format it)
-        const processedImage = await sharp(req.file.buffer)
-          .resize(50, 50)  // Resize to 50x50
-          .toBuffer();
+        if (!productData || !vendors || !Array.isArray(vendors)) {
+            return res.status(400).json({ message: 'Invalid payload structure.' });
+        }
 
-        // Upload image to AWS S3
-        const s3Params = {
-          Bucket: process.env.AWS_BUCKET_NAME,
-          Key: `product_images/${Date.now()}_${req.file.originalname}`, // File name in S3
-          Body: processedImage,
-          ContentType: req.file.mimetype,  // This makes the image publicly accessible
+        const { productName, category, quantity, unitPrice, unit, status } = productData;
+
+        if (!productName || !category || !quantity || !unitPrice || !unit || !status) {
+            return res.status(400).json({ message: 'Missing required product fields.' });
+        }
+
+        let productImage = null;
+
+        // Handle product image upload if a file is provided
+        if (req.file) {
+            const processedImage = await sharp(req.file.buffer)
+                .resize(50, 50)
+                .toBuffer();
+
+            const s3Params = {
+                Bucket: process.env.AWS_BUCKET_NAME,
+                Key: `product_images/${Date.now()}_${req.file.originalname}`,
+                Body: processedImage,
+                ContentType: req.file.mimetype,
+            };
+
+            const command = new PutObjectCommand(s3Params);
+            const s3Response = await s3.send(command);
+
+            productImage = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Params.Key}`;
+        }
+
+        // Create product data for database insertion
+        const productDataForDb = {
+            product_name: productName,
+            category_id: category,
+            quantity_in_stock: quantity,
+            unit_price: unitPrice,
+            product_image: productImage,
+            unit,
+            status,
         };
-        const command = new PutObjectCommand(s3Params);
-        const s3Response = await s3.send(command);
 
-        productImage = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Params.Key}`;
-      }
+        // Insert product data into the database
+        const [productId] = await productModel.createProduct(productDataForDb);
 
-      // Create product data
-      const productData = {
-        product_name: productName,
-        category_id: category,
-        quantity_in_stock: quantity,
-        unit_price: unitPrice,
-        product_image: productImage,
-        status: status,
-        unit: unit,
-      };
-      // Insert product data into the database
-      const [productId] = await productModel.createProduct(productData);
+        // Validate vendors array and create mappings
+        if (vendors.length === 0) {
+            return res.status(400).json({ message: 'At least one vendor must be selected.' });
+        }
 
-      // Create product-to-vendor mapping
-      const productToVendorData = {
-        product_id: productId,
-        vendor_id: vendor,
-        status: 1, // Assuming status is 1 for active
-      };
+        const productToVendorData = vendors.map((vendorId) => ({
+            product_id: productId,
+            vendor_id: vendorId,
+            status: 1, // Assuming status is 1 for active
+        }));
 
-      await productModel.createProductToVendor(productToVendorData);
+        // Bulk insert into product-to-vendor mapping table
+        await productModel.createProductToVendorBulk(productToVendorData);
 
-      res.status(201).json({ message: 'Product added successfully', product: { ...productData, product_id: productId } });
+        res.status(201).json({
+            message: 'Product added successfully',
+            product: { ...productDataForDb, product_id: productId, vendors },
+        });
     } catch (err) {
-      next(err);
+        console.error('Error adding product:', err);
+        next(err);
     }
-  },
-
+}
+,
   async getCategories(req, res, next) {
     try {
       const categories = await categoryModel.getAllCategories();
@@ -1006,19 +1029,99 @@ module.exports = {
   }
 },
   
-  
-  async updateCartItemQuantity(req, res) {
-
+async updateCartQty(req, res) {
   try {
-    const userId = req.user.userId;
+    const { productId, diff } = req.body.payload; // Receive the product ID and diff from the request body
+    const userId = req.user.id;
+
+
+    console.log('Product ID:', productId);
+    console.log('Difference:', diff);
+    console.log(userId);
 
     // Start a transaction
     const trx = await knex.transaction();
 
     try {
-      for (const { productId, changeInQuantity } of parsedData) {
+      // Fetch the current product details from the products table
+      const product = await trx('products').where('product_id', productId).first();
+      if (!product) {
+        throw { success: false, status: 404, error: 'Product not found', productId };
+      }
+
+      // Update the quantity_in_stock in the products table
+      const newStock = product.quantity_in_stock - diff; // Add the diff to the stock
+      if (newStock < 0) {
+        throw { success: false, status: 400, error: 'Insufficient stock', productId };
+      }
+      console.log('newstock', newStock);
+
+      await trx('products')
+        .where('product_id', productId)
+        .update({ quantity_in_stock: newStock });
+
+      // Fetch the current cart item details
+      const cartItem = await trx('carts')
+        .where('product_id', productId)
+        .andWhere('user_id', userId)
+        .first();
+
+      if (!cartItem) {
+        throw { success: false, status: 404, error: 'Cart item not found', productId };
+      }
+
+      // Update the quantity in the cart table
+      const updatedCartQuantity = cartItem.quantity + diff; // Reduce the quantity in the cart by the diff
+      if (updatedCartQuantity < 0) {
+        throw { success: false, status: 400, error: 'Invalid cart quantity', productId };
+      }
+      console.log('****',updatedCartQuantity);
+
+      await trx('carts')
+        .where('product_id', productId)
+        .andWhere('user_id', userId)
+        .update({ quantity: updatedCartQuantity });
+
+      // Commit the transaction
+      await trx.commit();
+
+      return res.status(200).json({
+        message: 'Cart and product updated successfully',
+        productId,
+        newStock,
+        updatedCartQuantity,
+      });
+    } catch (error) {
+      // Rollback the transaction on error
+      await trx.rollback();
+      console.error('Transaction error:', error);
+
+      if (error.success === false) {
+        return res.status(error.status).json({ error: error.error, productId: error.productId });
+      }
+
+      throw error; // Rethrow unexpected errors
+    }
+  } catch (error) {
+    console.error('Error updating cart and product quantities:', error);
+    return res.status(500).json({ error: 'Failed to update cart and product quantities' });
+  }
+}
+
+,
+  async updateCartItemQuantity(req, res) {
+
+  try {
+    const userId = req.user.id;
+    console.log(req.user)
+    const parsedData = req.body
+    // Start a transaction
+    const trx = await knex.transaction();
+
+    try {
+      for (const { productId, quantity } of parsedData.products) {
         console.log("Product_Id:", productId);
-        console.log("ChangeInQuantity:", changeInQuantity);
+        console.log("quantity:", quantity);
         console.log("UserId:", userId);
 
         // Fetch current product details from the products table
@@ -1028,7 +1131,7 @@ module.exports = {
         }
 
         // Calculate the new stock based on change in quantity
-        const newStock = product.quantity_in_stock - changeInQuantity;
+        const newStock = product.quantity_in_stock - quantity;
         if (newStock < 0) {
           throw { success: false, status: 400, error: 'Not enough stock available', productId };
         }
@@ -1044,7 +1147,7 @@ module.exports = {
         }
 
         // Calculate the updated cart quantity
-        const updatedCartQuantity = cartItem.quantity + changeInQuantity;
+        const updatedCartQuantity = cartItem.quantity + quantity;
 
         if (updatedCartQuantity < 0) {
           throw { success: false, status: 400, error: 'Invalid cart quantity', productId };
@@ -1118,7 +1221,7 @@ module.exports = {
 
       // Commit the transaction
       await trx.commit();
-      alert("Cart item deleted successfully");
+      
 
       return res.status(200).json({ message: 'Cart item deleted successfully' });
       
@@ -1129,7 +1232,7 @@ module.exports = {
       res.status(500).json({ message: 'Failed to delete cart item' });
     }
   },
-
+ 
 
 
    
@@ -1241,8 +1344,85 @@ module.exports = {
 
 
  // Import data controller
+// async importFile(req, res) {
+//   const products = req.body;  // No need for JSON.parse since express.json() handles it.
+
+//   if (!Array.isArray(products)) {
+//     return res.status(400).json({ error: 'Invalid JSON format: Expected an array' });
+//   }
+
+//   console.log("products: ", products);
+
+//   try {
+//     // Process each product in the imported data
+//     for (let product of products) {
+//       // Check if the category exists
+//       let category = await knex('categories').where('category_name', product.category_name).first();
+//       if (!category) {
+//         // If the category does not exist, create a new one
+//         category = await knex('categories').insert({
+//           category_name: product.category_name,
+//           description: product.category_description || '',  // Assuming there might be a description
+//           status: '1'  // Active
+//         }).returning('*');
+//       }
+
+//       // Check if the vendor exists
+//       let vendorName = product.vendorName;
+//       if (!vendorName) {
+//         return res.status(400).json({ error: 'Vendor name is missing' });
+//       }
+
+//       let vendor = await knex('vendors').where('vendor_name', vendorName).first();
+//       if (!vendor) {
+//         // If the vendor does not exist, create a new one
+//         vendor = await knex('vendors').insert({
+//           vendor_name: vendorName,
+//           contact_name: product.vendor_contact_name || '',
+//           address: product.vendor_address || '',
+//           city: product.vendor_city || '',
+//           postal_code: product.vendor_postal_code || '',
+//           country: product.vendor_country || '',
+//           phone: product.vendor_phone || '',
+//           status: '1'  // Active
+//         }).returning('*');
+//       }
+
+//       // Insert the product if it doesn't exist
+//       let existingProduct = await knex('products').where('product_name', product.product_name).first();
+//       if (!existingProduct) {
+//         // Insert new product
+//         existingProduct = await knex('products').insert({
+//           product_name: product.product_name,
+//           category_id: category.category_id,  // Reference to category
+//           quantity_in_stock: product.quantity_in_stock || 0,
+//           unit_price: product.unit_price || 0,
+//           product_image: product.product_image || '', // Assuming product image is passed
+//           unit: product.unit || '',  // Assuming unit is passed
+//           status: '1'  // Active
+//         }).returning('*');
+//       }
+
+//       console.log("existing product", existingProduct);
+
+//       // Optionally, associate the product with the vendor
+//       await knex('product_to_vendor').insert({
+//         vendor_id: vendor.vendor_id,  // Reference to vendor
+//         product_id: existingProduct.product_id,  // Reference to product
+//         status: '1'  // Active
+//       });
+//     }
+
+//     res.status(200).json({ message: 'Data imported successfully' });
+//   } catch (error) {
+//     console.error('Error importing data:', error);
+//     res.status(500).json({ error: 'Error importing data' });
+//   }
+// }
+// ,
+
 async importFile(req, res) {
-  const products = req.body;  // No need for JSON.parse since express.json() handles it.
+  const products = req.body; // Assuming express.json() middleware handles JSON parsing
 
   if (!Array.isArray(products)) {
     return res.status(400).json({ error: 'Invalid JSON format: Expected an array' });
@@ -1251,63 +1431,76 @@ async importFile(req, res) {
   console.log("products: ", products);
 
   try {
-    // Process each product in the imported data
     for (let product of products) {
       // Check if the category exists
       let category = await knex('categories').where('category_name', product.category_name).first();
       if (!category) {
-        // If the category does not exist, create a new one
-        category = await knex('categories').insert({
+        const [categoryId] = await knex('categories').insert({
           category_name: product.category_name,
-          description: product.category_description || '',  // Assuming there might be a description
-          status: '1'  // Active
-        }).returning('*');
+          description: product.category_description || '',
+          status: '1' // Active
+        });
+        category = { category_id: categoryId }; // Manually create the object
       }
 
       // Check if the vendor exists
-      let vendorName = product.vendorName;
-      if (!vendorName) {
-        return res.status(400).json({ error: 'Vendor name is missing' });
-      }
-
-      let vendor = await knex('vendors').where('vendor_name', vendorName).first();
+      let vendor = await knex('vendors').where('vendor_name', product.vendorName).first();
       if (!vendor) {
-        // If the vendor does not exist, create a new one
-        vendor = await knex('vendors').insert({
-          vendor_name: vendorName,
+        const [vendorId] = await knex('vendors').insert({
+          vendor_name: product.vendorName,
           contact_name: product.vendor_contact_name || '',
           address: product.vendor_address || '',
           city: product.vendor_city || '',
           postal_code: product.vendor_postal_code || '',
           country: product.vendor_country || '',
           phone: product.vendor_phone || '',
-          status: '1'  // Active
-        }).returning('*');
+          status: '1' // Active
+        });
+        vendor = { vendor_id: vendorId }; // Manually create the object
       }
 
       // Insert the product if it doesn't exist
       let existingProduct = await knex('products').where('product_name', product.product_name).first();
       if (!existingProduct) {
-        // Insert new product
-        existingProduct = await knex('products').insert({
+        const [productId] = await knex('products').insert({
           product_name: product.product_name,
-          category_id: category.category_id,  // Reference to category
+          category_id: category.category_id, // Reference to category
           quantity_in_stock: product.quantity_in_stock || 0,
           unit_price: product.unit_price || 0,
-          product_image: product.product_image || '', // Assuming product image is passed
-          unit: product.unit || '',  // Assuming unit is passed
-          status: '1'  // Active
-        }).returning('*');
+          product_image: product.product_image || '',
+          unit: product.unit || '',
+          status: '1' // Active
+        });
+        existingProduct = { product_id: productId }; // Manually create the object
       }
 
       console.log("existing product", existingProduct);
 
-      // Optionally, associate the product with the vendor
-      await knex('product_to_vendor').insert({
-        vendor_id: vendor.vendor_id,  // Reference to vendor
-        product_id: existingProduct.product_id,  // Reference to product
-        status: '1'  // Active
-      });
+      // Update or insert into product_to_vendor table
+      const productVendorAssociation = await knex('product_to_vendor')
+        .where({
+          product_id: existingProduct.product_id,
+          vendor_id: vendor.vendor_id
+        })
+        .first();
+
+      if (!productVendorAssociation) {
+        await knex('product_to_vendor').insert({
+          product_id: existingProduct.product_id,
+          vendor_id: vendor.vendor_id,
+          status: '1' // Active
+        });
+      } else {
+        // Optional: Update the status if the association already exists
+        await knex('product_to_vendor')
+          .where({
+            product_id: existingProduct.product_id,
+            vendor_id: vendor.vendor_id
+          })
+          .update({
+            status: '1' // Active
+          });
+      }
     }
 
     res.status(200).json({ message: 'Data imported successfully' });
@@ -1316,10 +1509,7 @@ async importFile(req, res) {
     res.status(500).json({ error: 'Error importing data' });
   }
 }
-,
 
-
- 
 };
 
 

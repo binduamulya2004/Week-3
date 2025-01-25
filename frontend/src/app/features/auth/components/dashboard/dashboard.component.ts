@@ -130,13 +130,13 @@ selectedStatus: string = '';
     this.fetchCartPage(this.currentCartPage);
     this.fetchUploadedFiles();
   }
-  ngDoCheck(): void {
-    // console.log('ngDoCheck Called');
-    if (!this.showCart && this.flag == 1) {
-      this.applyQuantityChanges(); 
-      this.flag = 0;
-    }
-  }
+  // ngDoCheck(): void {
+  //   // console.log('ngDoCheck Called');
+  //   if (!this.showCart && this.flag == 1) {
+  //     this.applyQuantityChanges(); 
+  //     this.flag = 0;
+  //   }
+  // }
 
   toggleTable(view: string): void {
     if (view === 'cart') {
@@ -148,23 +148,45 @@ selectedStatus: string = '';
   }
 
   updateQuantity(product:any, change: number): void {
-    const newQuantity = product.quantity_in_stock + change;
-    console.log('newQuantity:', newQuantity);
-    if (newQuantity >= 0){
-      product.quantity = newQuantity;
-      const initialQuantity = product.initialQuantity || product.quantity;
-      this.quantityChanges[product.product_id] = newQuantity - initialQuantity;
-    }
-    console.log('quantityChanges:', this.quantityChanges);
+    console.log(change);
+    console.log(product.quantity_in_stock);
+    const var1 = product.quantity + change;
+    console.log(product.quantity);
+    console.log('newQuantity in cart:', var1);
+    product.quantity = var1;
+     const diff=change;
+
+    const payload = {
+      productId:product.product_id,
+      diff: diff,
+    };
+
+
+    this.http
+    .put<any>(`${environment.apiUrl}/auth/update-cart-quantity`, {payload})
+    .subscribe({
+      next: (response) => {
+        console.log('Cart quantity updated successfully:', response);
+        this.fetchCartPage(this.currentCartPage); 
+        this.loadProducts();
+        this.quantityChanges = {}; 
+      },
+      error: (error) => {
+        console.error('Error updating cart items quantity:', error);
+      },
+    });
+
+
   }
 
 
   adjustQuantity(product: product, change: number): void {
   const newQuantity = product.quantity_in_stock + change;
+  console.log('new quantity',newQuantity);
 
   // Ensure the new quantity does not exceed stock and is not negative
   if (newQuantity >= 0 && newQuantity <= product.quantity_in_stock) {
-    product.currentQuantity = newQuantity;
+    product.quantity_in_stock = newQuantity;
   } else if (newQuantity > product.quantity_in_stock) {
     alert(`You cannot exceed the available stock (${product.quantity_in_stock}).`);
   } else if (newQuantity < 0) {
@@ -257,6 +279,7 @@ selectedStatus: string = '';
           next: (response) => {
             console.log('Cart items updated successfully:', response);
             this.fetchCartPage(this.currentCartPage); 
+            this.loadProducts();
             this.quantityChanges = {}; 
           },
           error: (error) => {
@@ -264,6 +287,7 @@ selectedStatus: string = '';
           },
         });
     }
+
   }
 
   deleteCartItem(cartId: number): void {
@@ -272,6 +296,8 @@ selectedStatus: string = '';
       .subscribe({
         next: () => {
           this.fetchCartPage(this.currentCartPage);
+          this.loadProducts();
+          alert('cart item deleted succesfully')
         },
         error: (err) => {
           console.error('Error deleting cart item:', err);
@@ -290,43 +316,34 @@ selectedStatus: string = '';
           quantity: product.quantity_in_stock,
         };
       });
-      
-
+  
     if (selectedProducts.length === 0) {
       alert('Please select at least one product to move.');
       return;
     }
+  
     console.log('Selected products in frontend:', selectedProducts);
+  
     this.http
-      .post(`${environment.apiUrl}/auth/move-to-cart`, {
-        products: selectedProducts,
-      })
+      .post(`${environment.apiUrl}/auth/move-to-cart`, { products: selectedProducts })
       .subscribe({
         next: (response) => {
-          // alert('Products moved successfully!');
-          this.http
-            .post(`${environment.apiUrl}/auth/cart/update`, {
-              products: selectedProducts,
-            })
-            .subscribe({
-              next: (response) => {
-                alert(
-                  'Products moved successfully! And cart updated successfully!'
-                );
-              },
-              error: (error) => {
-                alert('Failed to update cart.');
-                console.error('Error update cart:', error);
-              },
-            });
+          console.log('Products moved successfully to the cart:', response);
+          alert('Products moved successfully to the cart:');
+          this.loadProducts();
+          this.fetchCartPage(this.currentCartPage);
+  
+          // Update the cart after moving products
+        
+          
         },
-        error: (error) => {
-          alert('Failed to move products.');
-          console.error('Error moving products to cart:', error);
+        error: (moveError) => {
+          alert('Failed to move products to the cart.');
+          console.error('Error moving products to the cart:', moveError);
         },
       });
   }
-
+  
   
   
 
@@ -638,67 +655,75 @@ selectedStatus: string = '';
       console.log('Selected file:', file);
     }
   }
+
+
+
   addProduct() {
     if (this.addProductForm.valid) {
-      const productData = this.addProductForm.value;
-      console.log('***** in frontend ');
-      console.log(productData);
+        const productData = this.addProductForm.value;
+        console.log('***** in frontend ');
+        console.log(productData);
 
-      this.http
-        .post(`${environment.apiUrl}/auth/products`, productData)
-        .subscribe(
-          (response: any) => {
-            console.log('Product added successfully:', response);
-            const newProduct = response.product;
+        const vendors = productData.vendor; // Array of selected vendor IDs
+        console.log(vendors);
+        delete productData.vendor; // Remove vendor field from productData to handle separately
+        console.log(vendors);
 
-            console.log('newproduct:', newProduct);
-            this.products.push(newProduct); // Update the products array with the new product
+        this.http
+            .post(`${environment.apiUrl}/auth/products`, { productData, vendors }) // Send productData and vendors array
+            .subscribe(
+                (response: any) => {
+                    console.log('Product added successfully:', response);
+                    const newProduct = response.product;
 
-            if (this.selectedFile) {
-              const formData = new FormData();
-              formData.append('product_image', this.selectedFile);
-              formData.append('productId', newProduct.product_id); // Include product ID in the form data
+                    this.products.push(newProduct); // Update the products array with the new product
 
-              const token = this.authService.getAccessToken();
-              const headers = new HttpHeaders({
-                Authorization: `Bearer ${token}`,
-              });
+                    if (this.selectedFile) {
+                        const formData = new FormData();
+                        formData.append('product_image', this.selectedFile);
+                        formData.append('productId', newProduct.product_id); // Include product ID in the form data
 
-              this.isUploading = true;
+                        const token = this.authService.getAccessToken();
+                        const headers = new HttpHeaders({
+                            Authorization: `Bearer ${token}`,
+                        });
 
-              this.http
-                .post(
-                  `${environment.apiUrl}/auth/upload-product-image`,
-                  formData,
-                  { headers }
-                )
-                .subscribe(
-                  (uploadResponse: any) => {
-                    console.log('File uploaded successfully:', uploadResponse);
-                    newProduct.product_image = uploadResponse.url; // Update the product image URL
-                    this.isUploading = false;
-                    this.closeProductModal();
-                    alert('Product added successfully!');
-                  },
-                  (error) => {
-                    console.error('Error uploading file:', error);
-                    this.isUploading = false;
-                  }
-                );
-            } else {
-              this.closeProductModal();
-              alert('Product added successfully!');
-            }
-          },
+                        this.isUploading = true;
 
-          (error) => {
-            console.error('Error adding product:', error);
-          }
-        );
+                        this.http
+                            .post(
+                                `${environment.apiUrl}/auth/upload-product-image`,
+                                formData,
+                                { headers }
+                            )
+                            .subscribe(
+                                (uploadResponse: any) => {
+                                    console.log('File uploaded successfully:', uploadResponse);
+                                    newProduct.product_image = uploadResponse.url; // Update the product image URL
+                                    this.isUploading = false;
+                                    this.closeProductModal();
+                                    alert('Product added successfully!');
+                                    this.loadProducts();
+                                },
+                                (error) => {
+                                    console.error('Error uploading file:', error);
+                                    this.isUploading = false;
+                                }
+                            );
+                    } else {
+                        this.closeProductModal();
+                        alert('Product added successfully!');
+                    }
+                },
+                (error) => {
+                    console.error('Error adding product:', error);
+                }
+            );
     } else {
-      console.error('Form is invalid');
+        console.error('Form is invalid');
     }
-  }
+}
+
 
   saveProductData(productData: any) {
     this.http
@@ -1048,11 +1073,12 @@ selectedStatus: string = '';
 
         // Post the JSON data to the backend
         this.http
-          .post(`${environment.apiUrl}/auth/import`, { data: jsonData })
+          .post(`${environment.apiUrl}/auth/import`, jsonData)
           .subscribe({
             next: (response: any) => {
               alert('Files uploaded and data imported successfully.');
               console.log('Response:', response);
+              this.loadProducts();
               // Optionally refresh data
               // this.getProducts();
             },
