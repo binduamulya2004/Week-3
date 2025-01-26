@@ -48,6 +48,12 @@ export class EncryptionInterceptor implements HttpInterceptor {
             return event;
           })
         );
+        //next.handle(encryptedRequest): This line passes the encrypted request (encryptedRequest) to the next handler in the HTTP pipeline.
+        //  This sends the request out to the server, and the next.handle() method returns an observable of HTTP events (HttpEvent<any>).
+
+        //.pipe(map(...)): The pipe() method is used to transform the observable stream. 
+        // The map() operator is used to manipulate the emitted events as they pass through the pipeline. 
+        // This will process each HTTP event emitted by the next.handle() observable.
 
     }
   }

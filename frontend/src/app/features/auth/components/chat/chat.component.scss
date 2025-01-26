@@ -1,0 +1,81 @@
+.card {
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  
+  .card-header {
+    font-size: 1.5rem;
+    font-weight: bold;
+  }
+  
+  .card-body {
+    font-family: 'Arial', sans-serif;
+  }
+  
+  .system-message {
+    font-style: italic;
+    font-weight: bold;
+    color: #007bff;
+  }
+  
+  .text-end {
+    text-align: right;
+    color: #495057;
+  }
+  
+  .text-start {
+    text-align: left;
+    color: #343a40;
+  }
+  
+  .input-group .form-control {
+    border-top-left-radius: 20px;
+    border-bottom-left-radius: 20px;
+  }
+  
+  .input-group .btn {
+    border-top-right-radius: 20px;
+    border-bottom-right-radius: 20px;
+  }
+  
+  .message {
+    padding: 5px 10px;
+    border-radius: 10px;
+    display: inline-block;
+    max-width: 80%;
+    word-wrap: break-word;
+  }
+  
+  .message.text-end {
+    background-color: #e9f7ef;
+  }
+  
+  .message.text-start {
+    background-color: #f8f9fa;
+  }
+  
+ /* Sent Message Bubble */
+.sent-message {
+    display: inline-block; /* Ensures the border only wraps the text */
+    background-color: #dbeafe; /* Light blue for sent messages */
+    color: #1e3a8a; /* Dark blue for better contrast */
+    border: 1px solid rgba(30, 58, 138, 0.2); /* Subtle border around the message */
+    border-radius: 10px; /* Rounded corners for a modern look */
+    padding: 8px 12px; /* Padding to create space inside the bubble */
+    max-width: 70%; /* Restricts the bubble width */
+    word-wrap: break-word; /* Ensures long words break to the next line */
+    margin: 5px 0; /* Space between consecutive messages */
+    text-align: left; /* Left-align text inside the bubble */
+    margin-left: auto; /* Align to the right for sent messages */
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+  }
+  
+  /* Username Styling in Sent Message */
+  .sent-message strong {
+    display: block; /* Places the username on a separate line */
+    font-weight: bold;
+    color: #1e40af; /* Slightly darker blue for emphasis */
+    margin-bottom: 0px; /* Remove spacing between username and message */
+    line-height: 1; /* Tightens the vertical spacing */
+  }
+  

@@ -12,6 +12,7 @@ import { Observable } from 'rxjs';
 import { log } from 'console';
 import {AuthService} from 'src/app/core/services/auth.service';
 import { DomSanitizer } from '@angular/platform-browser';
+import { Router } from '@angular/router';
 
 
 @Component({
@@ -106,7 +107,7 @@ selectedStatus: string = '';
 
   previewFileUrl: string | null = null;
 
-  constructor(private http: HttpClient, private fb: FormBuilder,private authService: AuthService,private sanitizer: DomSanitizer) {
+  constructor(private http: HttpClient,  private router: Router, private fb: FormBuilder,private authService: AuthService,private sanitizer: DomSanitizer) {
     this.addProductForm = this.fb.group({
       productName: ['', Validators.required],
       category: ['', Validators.required],
@@ -137,6 +138,10 @@ selectedStatus: string = '';
   //     this.flag = 0;
   //   }
   // }
+
+  redirectTochatApp(){
+    this.router.navigate(['/chat']);
+  }
 
   toggleTable(view: string): void {
     if (view === 'cart') {
@@ -703,6 +708,7 @@ selectedStatus: string = '';
                                     this.isUploading = false;
                                     this.closeProductModal();
                                     alert('Product added successfully!');
+
                                     this.loadProducts();
                                 },
                                 (error) => {

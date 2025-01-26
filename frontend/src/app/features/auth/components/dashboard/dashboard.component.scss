@@ -213,3 +213,38 @@
     }
   }
 }
+/* Centering the chat section */
+.chat {
+    display: flex;
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    height: 100vh; /* Full viewport height */
+    text-align: center;
+    flex-direction: column;
+    margin-top: 30px;
+  }
+  
+  /* Style for the chat button */
+  .chat button {
+    background-color: #7a26cc; /* Violet color */
+    border: 2px solid #7a26cc; /* Border same as button color */
+    color: white;
+    font-size: 16px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 80%; /* Adjust width of button */
+    max-width: 400px; /* Maximum width of button */
+  }
+  
+  .chat button:hover {
+    background-color: #ffffff; /* Change background color on hover */
+    color: #7a26cc; /* Change text color on hover */
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Add subtle shadow effect */
+  }
+  
+  .chat button:active {
+    transform: scale(0.98); /* Slightly scale down the button when clicked */
+  }
+  

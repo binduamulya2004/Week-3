@@ -16,6 +16,8 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { EncryptionInterceptor } from './core/interceptors/encryption.interceptor';
 import { ForgetpasswordComponent } from './features/auth/components/forgetpassword/forgetpassword.component';
 import { ResetpasswordComponent } from './features/auth/components/resetpassword/resetpassword.component';
+import { ChatComponent } from './features/auth/components/chat/chat.component';
+import { WebSocketService } from './core/services/websocket.service';
 
 
 // import { ToastrModule } from 'ngx-toastr';
@@ -26,7 +28,8 @@ import { ResetpasswordComponent } from './features/auth/components/resetpassword
     LoginComponent,
     DashboardComponent,
     ForgetpasswordComponent,
-    ResetpasswordComponent
+    ResetpasswordComponent,
+    ChatComponent
     
     
   ],
@@ -54,7 +57,7 @@ import { ResetpasswordComponent } from './features/auth/components/resetpassword
       provide: HTTP_INTERCEPTORS,
       useClass: EncryptionInterceptor,
       multi: true,
-    },
+    },WebSocketService,
   ],
   bootstrap: [AppComponent],
 })

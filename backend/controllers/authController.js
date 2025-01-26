@@ -105,7 +105,7 @@ module.exports = {
   async login(req, res, next) {
     try {
       const { email, password } = req.body;
-      console.log(email);
+      console.log('^^^^',email);
       console.log(password);
       const user = await userModel.findByEmail(email);
       if (!user) return res.status(400).json({ message: 'Invalid email or password' });
