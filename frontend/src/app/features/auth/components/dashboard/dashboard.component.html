@@ -360,8 +360,8 @@
 </div>
 
 
-<!-- File Preview Modal -->
-<div
+
+<!-- <div
   class="modal fade"
   id="filePreviewModal"
   tabindex="-1"
@@ -374,8 +374,7 @@
         <h5 class="modal-title" id="filePreviewModalLabel">File Preview</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
-        <!-- Preview Content -->
+    
         <ng-container *ngIf="previewFileUrl; else noPreview">
           <div *ngIf="isImage(previewFileUrl)">
             <img [src]="previewFileUrl" alt="Image Preview" class="img-fluid" />
@@ -388,6 +387,56 @@
             ></iframe>
           </div>
           <div *ngIf="!isImage(previewFileUrl) && !isPDF(previewFileUrl)">
+            <p>Preview not available for this file type.</p>
+          </div>
+        </ng-container>
+        <ng-template #noPreview>
+          <p>No file selected for preview.</p>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+</div> -->
+
+
+<!-- File Preview Modal -->
+<div
+  class="modal fade"
+  id="filePreviewModal"
+  tabindex="-1"
+  aria-labelledby="filePreviewModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filePreviewModalLabel">File Preview</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <!-- Preview Content -->
+        <ng-container *ngIf="previewFileUrl; else noPreview">
+          <div *ngIf="isImage(fileUrl)">
+            <img
+              [src]="previewFileUrl"
+              alt="Image Preview"
+              class="img-fluid"
+            />
+          </div>
+          <div *ngIf="isPDF(fileUrl)">
+            <iframe
+              [src]="previewFileUrl"
+              width="100%"
+              height="500px"
+              frameborder="0"
+            ></iframe>
+          </div>
+          <div *ngIf="!isImage(fileUrl) && !isPDF(fileUrl)">
             <p>Preview not available for this file type.</p>
           </div>
         </ng-container>

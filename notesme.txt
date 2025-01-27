@@ -41,3 +41,5 @@ npx knex seed:run
 
 
 npm install jspdf
+
+npm install swagger-jsdoc swagger-ui-express

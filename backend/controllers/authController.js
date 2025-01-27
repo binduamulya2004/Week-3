@@ -26,6 +26,7 @@ const s3 = new S3Client({
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    
   },
 });
 
@@ -1238,24 +1239,72 @@ async updateCartQty(req, res) {
    
 
  
+  // // Upload file controller
+  // async uploadFile(req, res) {
+  //   const file = req.file;
+  //   const userId = req.user.id;
+
+  //   if (!file || !userId) return res.status(400).json({ error: 'File or User ID missing' });
+
+  //   try {
+  //     const fileName = `${file.originalname}`;
+  //     const fileBuffer = await sharp(file.buffer).resize(800, 800).toBuffer();
+  //     const fileUrl = await uploadToS3(fileBuffer, fileName, file.mimetype, userId);
+
+  //     console.log('File details:', JSON.stringify(file)); // Serialize the object
+
+      
+  //     res.status(200).json({ message: 'File uploaded successfully', fileUrl , fileName: file.originalname,mimeType: file.mimetype,encoding: file.encoding});
+  //   } catch (error) {
+  //     console.error('Error uploading file:', error);
+  //     res.status(500).json({ error: 'Failed to upload file' });
+  //   }
+  // },
+
   // Upload file controller
-  async uploadFile(req, res) {
-    const file = req.file;
-    const userId = req.user.id;
+async uploadFile(req, res) {
+  const file = req.file;
+  const userId = req.user.id;
 
-    if (!file || !userId) return res.status(400).json({ error: 'File or User ID missing' });
+  if (!file || !userId) {
+    return res.status(400).json({ error: 'File or User ID missing' });
+  }
 
-    try {
-      const fileName = `${file.originalname}`;
-      const fileBuffer = await sharp(file.buffer).resize(800, 800).toBuffer();
-      const fileUrl = await uploadToS3(fileBuffer, fileName, file.mimetype, userId);
+  try {
+    const fileName = `${file.originalname}`;
+    let fileBuffer;
 
-      res.status(200).json({ message: 'File uploaded successfully', fileUrl , fileName: file.originalname});
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      res.status(500).json({ error: 'Failed to upload file' });
+    // Check file type
+    if (file.mimetype.startsWith('image/')) {
+      // Process image files using sharp
+      fileBuffer = await sharp(file.buffer).resize(800, 800).toBuffer();
+    } else if (file.mimetype === 'application/pdf') {
+      // For PDF, no resizing needed
+      fileBuffer = file.buffer;
+    } else {
+      // Unsupported file type
+      return res.status(400).json({ error: 'Unsupported file type' });
     }
-  },
+
+    // Upload to S3 (or any storage service)
+    const fileUrl = await uploadToS3(fileBuffer, fileName, file.mimetype, userId);
+
+    console.log('File details:', JSON.stringify(file)); // Serialize the object
+
+    // Response
+    res.status(200).json({
+      message: 'File uploaded successfully',
+      fileUrl,
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      encoding: file.encoding,
+    });
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    res.status(500).json({ error: 'Failed to upload file' });
+  }
+}
+,
 
  
 // Fetch uploaded files for a specific user from S3
@@ -1278,8 +1327,12 @@ async updateCartQty(req, res) {
         lastModified: item.LastModified,
         size: item.Size,
         url: `https://${params.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${item.Key}`,
+        fileName: item.Key.split('/').pop(), // Extract the file name from the key
+        lastModifiedFormatted: item.LastModified.toISOString() // Optional formatting
       }));
 
+
+      console.log('Files in backenndddd:', JSON.stringify(files));
 
       res.status(200).json({ files });
     } catch (error) {

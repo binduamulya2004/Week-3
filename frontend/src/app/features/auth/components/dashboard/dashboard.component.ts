@@ -14,7 +14,7 @@ import {AuthService} from 'src/app/core/services/auth.service';
 import { DomSanitizer } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 
-
+import {  SafeResourceUrl } from '@angular/platform-browser';
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
@@ -40,7 +40,7 @@ export class DashboardComponent implements OnInit {
   totalItems: number = 0;
   totalPages: number = 0;
   paginatedProducts: any[] = [];
-
+fileUrl="";
   uploadedFiles: any[] = [];
   selectedFiles: string[] = [];
 
@@ -105,7 +105,9 @@ selectedStatus: string = '';
   isDragging: boolean = false;
   isModalOpenprofile=false;
 
-  previewFileUrl: string | null = null;
+ 
+  previewFileUrl: SafeResourceUrl | null = null;
+
 
   constructor(private http: HttpClient,  private router: Router, private fb: FormBuilder,private authService: AuthService,private sanitizer: DomSanitizer) {
     this.addProductForm = this.fb.group({
@@ -1119,17 +1121,22 @@ previewFile(fileName: string) {
 
   const fileUrl = `https://${environment.awsBucketName}.s3.${environment.awsRegion}.amazonaws.com/bindu@AKV0796/${userId}/${fileName}`;
   console.log('File URL:', fileUrl); // Debugging purpose
-  this.previewFileUrl = fileUrl;
+  this.fileUrl=fileUrl;
+  this.previewFileUrl =this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
+}
+
+setPreviewFileUrl(fileUrl:string): void {
+  this.previewFileUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
 }
 
   // Check if the file is an image
-  isImage(url: string): boolean {
-    return /\.(jpg|jpeg|png|gif|bmp)$/i.test(url);
+  isImage(fileUrl: string): boolean {
+    return /\.(jpeg|jpg|png|gif|webp)$/i.test(fileUrl);
   }
 
   // Check if the file is a PDF
-  isPDF(url: string): boolean {
-    return /\.pdf$/i.test(url);
+  isPDF(fileUrl: string): boolean {
+    return fileUrl.endsWith('.pdf');
   }
 
 

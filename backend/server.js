@@ -9,12 +9,21 @@ const cors = require('cors');
 const routes = require('./routes');
 const sharp = require('sharp');
 const { decryptMiddleware, encryptMiddleware } = require('./middleware/jwt/cryptoMiddleware');
+const { swaggerUi, swaggerSpec } = require('./config/swaggerConfig');
+
+
 
 dotenv.config();
 const app = express();
 
-// WebSocket server
-const wss = new WebSocket.Server({ noServer: true });
+
+
+
+
+
+// WebSocket server -- Server is a class
+const wss = new WebSocket.Server({ noServer: true });//option indicates that the WebSocket server won't create its own HTTP server to listen for connections.
+
 const clients = new Map(); // A Map object to store WebSocket clients and their associated usernames.
 //ws is the WebSocket connection object that can be used to send and receive messages to/from the connected client.
 wss.on('connection', (ws) => {
@@ -98,11 +107,20 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(bodyParser.urlencoded({ extended: true }));
 
+//decypt 
 app.use(decryptMiddleware);
+
+
+// Swagger docs
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+console.log('Swagger docs available at http://localhost:3000/api-docs');
+
 
 // Routes
 app.use('/api', routes);
 
+
+//encrypt
 app.use(encryptMiddleware);
 
 // Global Error Handler
@@ -123,3 +141,4 @@ app.server.on('upgrade', (request, socket, head) => {
     wss.emit('connection', ws, request);
   });
 });
+

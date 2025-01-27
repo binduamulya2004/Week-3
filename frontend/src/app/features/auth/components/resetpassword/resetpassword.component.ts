@@ -42,6 +42,7 @@ export class ResetpasswordComponent implements OnInit {
   resetPassword(): void {
     const password = this.passwordFields.at(0).value; // Get the password
     const confirmPassword = this.passwordFields.at(1).value; // Get the confirm password
+    
 
     if (password !== confirmPassword) {
       alert('Passwords do not match.');

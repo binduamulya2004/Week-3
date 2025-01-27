@@ -218,10 +218,11 @@
     display: flex;
     justify-content: center; /* Center horizontally */
     align-items: center; /* Center vertically */
-    height: 100vh; /* Full viewport height */
+    height: 50vh; /* Full viewport height */
     text-align: center;
     flex-direction: column;
-    margin-top: 30px;
+    margin-top: 0px;
+
   }
   
   /* Style for the chat button */

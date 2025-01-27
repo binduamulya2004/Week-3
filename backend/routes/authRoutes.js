@@ -10,8 +10,8 @@ const mailController=require('../controllers/mailControllers');
 const storage = multer.memoryStorage(); // Store files in memory
 const upload = multer({ storage: storage });
 
-router.post('/signup', authController.signup);
-router.post('/login', authController.login);
+// router.post('/signup', authController.signup);
+// router.post('/login', authController.login);
 router.post('/refresh-token', authController.refreshToken);
 router.post('/logout', authController.logout);
 
@@ -64,3 +64,86 @@ router.post('/reset-password/:id/:accessToken',mailController.resetPassword);
 router.put('/update-cart-quantity', authenticate, authController.updateCartQty)
 
 module.exports = router;
+
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     SignupRequest:
+ *       type: object
+ *       required:
+ *         - email
+ *         - password
+ *       properties:
+ *         email:
+ *           type: string
+ *           description: User's email address
+ *         password:
+ *           type: string
+ *           description: User's password
+ *     SignupResponse:
+ *       type: object
+ *       properties:
+ *         message:
+ *           type: string
+ *           description: Success message
+ *         userId:
+ *           type: string
+ *           description: ID of the created user
+ */
+
+/**
+ * @swagger
+ * /signup:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SignupRequest'
+ *     responses:
+ *       200:
+ *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SignupResponse'
+ */
+router.post('/signup', authController.signup);
+
+/**
+ * @swagger
+ * /login:
+ *   post:
+ *     summary: Log in a user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: User's email
+ *               password:
+ *                 type: string
+ *                 description: User's password
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   description: JWT token
+ */
+router.post('/login', authController.login);
