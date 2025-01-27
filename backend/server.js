@@ -11,13 +11,23 @@ const sharp = require('sharp');
 const { decryptMiddleware, encryptMiddleware } = require('./middleware/jwt/cryptoMiddleware');
 const { swaggerUi, swaggerSpec } = require('./config/swaggerConfig');
 
-
+const rateLimit = require('express-rate-limit'); 
 
 dotenv.config();
 const app = express();
 
 
 
+// Set up rate limiting middleware
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // Limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again later."
+});
+
+// Apply the rate limiter to all API routes
+app.use('/api', apiLimiter);  // Apply rate limiting only to the /api routes
+//429 Too Many Requests
 
 
 

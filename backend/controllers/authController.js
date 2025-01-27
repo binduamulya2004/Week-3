@@ -49,7 +49,7 @@ async function uploadToS3(fileBuffer, fileName, mimeType, userId) {
 }
 
 function generateAccessToken(user) {
-  return jwt.sign({ id: user.user_id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '15m' });
+  return jwt.sign({ id: user.user_id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '150m' });
 }
 
 function generateRefreshToken(user) {
@@ -1281,7 +1281,8 @@ async uploadFile(req, res) {
     } else if (file.mimetype === 'application/pdf') {
       // For PDF, no resizing needed
       fileBuffer = file.buffer;
-    } else {
+    }
+      else {
       // Unsupported file type
       return res.status(400).json({ error: 'Unsupported file type' });
     }

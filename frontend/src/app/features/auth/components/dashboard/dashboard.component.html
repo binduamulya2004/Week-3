@@ -57,10 +57,10 @@
   
 <!-- complete table -->
 
-<div class="container mt-4 mb-5 border">
+<div class="container-fluid mt-4">
     <div class="row">
         <!-- Left side of the dashboard -->
-        <div class="col-md-10 border" >
+        <div class="col-md-10 " >
             <div class="bg-white p-4 rounded shadow-sm">
                 <!-- Inventory Header Section -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -84,6 +84,9 @@
                                 [disabled]="selectedProducts.length === 0">
                                 <i class="bi bi-download"></i> Download All
                             </button>
+
+
+
                             <!-- <button class="btn btn-outline-violet me-2" data-bs-toggle="modal"
                                 data-bs-target="#importModal">
                                 <i class="bi bi-upload"></i> Import
@@ -317,89 +320,166 @@
             </div>
         </div>
 
-        <!-- Right side of the dashboard -->
-        <div class="col-md-2 mt-4">
-            <div class="card-header bg-white">
-              <div class="files-upload-container">
-                <h5>Files Uploaded</h5>
-                <div class="action-buttons d-flex mb-2">
-                  <button class="btn btn-outline-primary me-2 btn-violet btn-sm" (click)="downloadAllFile()">Download All</button>
-                  <br>
-                  <button class="btn btn-outline-primary me-2 btn-violet btn-sm" (click)="openModalFile()">Upload</button>
+       <!-- right side of the dashboard -->
+
+        <div class="files-upload-container col-md-2 ">
+            <h2 class="text-center mb-10 mt-10">Files Uploaded</h2>
+            
+            <!-- Action buttons -->
+            <div class="action-buttons d-flex justify-content-between">
+              <button
+                class="btn btn-outline-violet me-2"
+                [disabled]="selectedFiles.length == 0"
+                (click)="downloadAllFile()"
+              >
+                Download All
+              </button>
+              <button
+                class="btn btn-outline-violet me-2"
+                (click)="openModalFile()"
+              >
+                Upload
+              </button>
+            </div>
+          
+            <!-- File list -->
+            <div class="file-list">
+              <div
+                *ngFor="let file of uploadedFiles"
+                class="file-item d-flex align-items-center justify-content"
+              >
+                <!-- File icon -->
+                <div class="file-icon">
+                  <img
+                    [src]="getFileIcon(file.name)"
+                    alt="file-icon"
+                  />
                 </div>
           
-                <div class="file-list">
-                  <div  *ngFor="let file of uploadedFiles">
-                    <input type="checkbox" id="{{ file.name }}" (change)="toggleFileSelection(file.name)" />
-                    <label 
-                      for="{{ file.name }}" 
-                      class="file-name-label"
-                      (click)="preventCheckboxToggle($event)"
-                      data-bs-toggle="modal" 
-                      data-bs-target="#filePreviewModal"
-                      (click)="previewFile(file.name)"
-                    >
-                      {{ file.name }}
-                    </label>
-                    <small class="text-muted">{{ file.size }} bytes</small>
-                  </div>
+                <!-- File info -->
+                <div class="file-info">
+                  <input
+                    type="checkbox"
+                    id="{{ file.name }}"
+                    (change)="toggleFileSelection(file.name)"
+                  />
+                  <label
+                    for="{{ file.name }}"
+                    (click)="preventCheckboxToggle($event)"
+                    data-bs-toggle="modal"
+                    data-bs-target="#filePreviewModal"
+                    (click)="previewFile(file.name)"
+                    title="{{ file.name }}"
+                  >
+                    {{ file.name }}
+                  </label>
                 </div>
-              </div>
           
-              <div class="modal" *ngIf="isModalOpen">
-                <div class="modal-content">
-                  <input type="file" (change)="onFileChange($event)" />
-                  <button (click)="uploadFiles()" data-bs-toggle="modal" data-bs-target="#profilePictureModal">Upload</button>
-                  <button (click)="closeModalFile()">Cancel</button>
-                </div>
+                <!-- File size -->
+                <small>{{ file.size }} bytes</small>
               </div>
             </div>
-          </div>
+             <!-- Modal for file upload -->
+             <div
+             class="modal"
+             *ngIf="isModalOpen"
+           >
+             <div class="modal-dialog modal-dialog-centered">
+               <div class="modal-content">
+                 <h6 class="modal-title">Upload File</h6>
+                 <input
+                   type="file"
+                   class="form-control"
+                   (change)="onFileChange($event)"
+                 />
+                 <div class="d-flex justify-content-end">
+                   <button
+                     class="btn btn-success btn-sm"
+                     (click)="uploadFiles()"
+                   >
+                     Upload
+                   </button>
+                   <button
+                     class="btn btn-secondary btn-sm"
+                     (click)="closeModalFile()"
+                   >
+                     Cancel
+                   </button>
+                 </div>
+               </div>
+             </div>
+           </div>
+         </div>
+          
+         
+          
+
+            <h2 class="text-center mb-10 mt-10">Files Uploaded</h2>
+          
+            <!-- Action buttons -->
+            <div class="action-buttons d-flex justify-content-between">
+              <button
+                class="btn btn-outline-primary me-2"
+                [disabled]="selectedFiles.length == 0"
+                (click)="downloadAllFile()"
+              >
+                Download All
+              </button>
+              <button
+                class="btn btn-outline-primary me-2"
+                (click)="openModalFile()"
+              >
+                Upload
+              </button>
+            </div>
+          
+            <!-- File list -->
+            <div class="file-list">
+              <div
+                *ngFor="let file of uploadedFiles"
+                class="file-item d-flex align-items-center justify-content-between"
+              >
+                <!-- File icon -->
+                <div class="file-icon">
+                  <img
+                    [src]="getFileIcon(file.name)"
+                    alt="file-icon"
+                    width="40"
+                    height="40"
+                  />
+                </div>
+          
+                <!-- File info -->
+                <div class="file-info">
+                  <input
+                    type="checkbox"
+                    id="{{ file.name }}"
+                    (change)="toggleFileSelection(file.name)"
+                  />
+                  <label
+                    for="{{ file.name }}"
+                    (click)="preventCheckboxToggle($event)"
+                    data-bs-toggle="modal"
+                    data-bs-target="#filePreviewModal"
+                    (click)="previewFile(file.name)"
+                    title="{{ file.name }}"
+                  >
+                    {{ file.name }}
+                  </label>
+                </div>
+          
+                <!-- File size -->
+                <small>{{ file.size }} bytes</small>
+              </div>
+            </div>
+          
+
+
 
     </div>
 </div>
 
-
-
-<!-- <div
-  class="modal fade"
-  id="filePreviewModal"
-  tabindex="-1"
-  aria-labelledby="filePreviewModalLabel"
-  aria-hidden="true"
->
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="filePreviewModalLabel">File Preview</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-    
-        <ng-container *ngIf="previewFileUrl; else noPreview">
-          <div *ngIf="isImage(previewFileUrl)">
-            <img [src]="previewFileUrl" alt="Image Preview" class="img-fluid" />
-          </div>
-          <div *ngIf="isPDF(previewFileUrl)">
-            <iframe
-              [src]="previewFileUrl"
-              width="100%"
-              height="500px"
-            ></iframe>
-          </div>
-          <div *ngIf="!isImage(previewFileUrl) && !isPDF(previewFileUrl)">
-            <p>Preview not available for this file type.</p>
-          </div>
-        </ng-container>
-        <ng-template #noPreview>
-          <p>No file selected for preview.</p>
-        </ng-template>
-      </div>
-    </div>
-  </div>
-</div> -->
-
-
-<!-- File Preview Modal -->
+<!-- File Preview Modal --> 
 <div
   class="modal fade"
   id="filePreviewModal"
@@ -447,6 +527,7 @@
     </div>
   </div>
 </div>
+
 
 
 <!-- Add Product Modal -->

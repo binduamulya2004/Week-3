@@ -1110,24 +1110,25 @@ selectedStatus: string = '';
     this.uploadFilesforimport();
   }
 
-// Preview file
-previewFile(fileName: string) {
-  const userId = this.authService.getUserId();
-
-  if (!userId || !fileName) {
-    console.error('User ID or file name is undefined');
-    return;
+  previewFile(fileName: string) {
+    const userId = this.authService.getUserId();
+  
+    if (!userId || !fileName) {
+      console.error('User ID or file name is undefined');
+      return;
+    }
+  
+    const fileUrl = `https://${environment.awsBucketName}.s3.${environment.awsRegion}.amazonaws.com/bindu@AKV0796/${userId}/${fileName}`;
+    console.log('File URL:', fileUrl); // Debugging purpose
+    this.fileUrl=fileUrl;
+    this.previewFileUrl =this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
   }
-
-  const fileUrl = `https://${environment.awsBucketName}.s3.${environment.awsRegion}.amazonaws.com/bindu@AKV0796/${userId}/${fileName}`;
-  console.log('File URL:', fileUrl); // Debugging purpose
-  this.fileUrl=fileUrl;
-  this.previewFileUrl =this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
-}
-
-setPreviewFileUrl(fileUrl:string): void {
-  this.previewFileUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
-}
+  
+  setPreviewFileUrl(fileUrl:string): void {
+    this.previewFileUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
+  }
+  
+  
 
   // Check if the file is an image
   isImage(fileUrl: string): boolean {
@@ -1137,7 +1138,8 @@ setPreviewFileUrl(fileUrl:string): void {
   // Check if the file is a PDF
   isPDF(fileUrl: string): boolean {
     return fileUrl.endsWith('.pdf');
-  }
+  } 
+
 
 
   searchQuery(event: any) {
@@ -1236,6 +1238,28 @@ filterByColumn(product: any, key: string): boolean {
 
   // Default case for other fields
   return product[key] && product[key].toString().toLowerCase().includes(searchTermLower);
+}
+
+
+getFileIcon(fileName: string): string {
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  switch (extension) {
+    case 'pdf':
+      return 'assets/icons/pdf-icon.png';
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+      return 'assets/icons/image-icon.png';
+    case 'doc':
+    case 'docx':
+      return 'assets/icons/doc-icon.png';
+    case 'fig':
+      return 'assets/icons/fig-icon.png';
+    case 'mp4':
+      return 'assets/icons/video-icon.png';
+    default:
+      return 'assets/icons/default-file-icon.png';
+  }
 }
 
 }
