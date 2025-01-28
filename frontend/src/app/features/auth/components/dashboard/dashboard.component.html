@@ -414,72 +414,68 @@
          
           
 
-            <h2 class="text-center mb-10 mt-10">Files Uploaded</h2>
-          
-            <!-- Action buttons -->
-            <div class="action-buttons d-flex justify-content-between">
-              <button
-                class="btn btn-outline-primary me-2"
-                [disabled]="selectedFiles.length == 0"
-                (click)="downloadAllFile()"
-              >
-                Download All
-              </button>
-              <button
-                class="btn btn-outline-primary me-2"
-                (click)="openModalFile()"
-              >
-                Upload
-              </button>
-            </div>
-          
-            <!-- File list -->
-            <div class="file-list">
-              <div
-                *ngFor="let file of uploadedFiles"
-                class="file-item d-flex align-items-center justify-content-between"
-              >
-                <!-- File icon -->
-                <div class="file-icon">
-                  <img
-                    [src]="getFileIcon(file.name)"
-                    alt="file-icon"
-                    width="40"
-                    height="40"
-                  />
-                </div>
-          
-                <!-- File info -->
-                <div class="file-info">
-                  <input
-                    type="checkbox"
-                    id="{{ file.name }}"
-                    (change)="toggleFileSelection(file.name)"
-                  />
-                  <label
-                    for="{{ file.name }}"
-                    (click)="preventCheckboxToggle($event)"
-                    data-bs-toggle="modal"
-                    data-bs-target="#filePreviewModal"
-                    (click)="previewFile(file.name)"
-                    title="{{ file.name }}"
-                  >
-                    {{ file.name }}
-                  </label>
-                </div>
-          
-                <!-- File size -->
-                <small>{{ file.size }} bytes</small>
-              </div>
-            </div>
-          
-
-
 
     </div>
 </div>
 
 <!-- File Preview Modal --> 
+<!-- <div
+  class="modal fade"
+  id="filePreviewModal"
+  tabindex="-1"
+  aria-labelledby="filePreviewModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filePreviewModalLabel">File Preview</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        
+        <ng-container *ngIf="previewFileUrl; else noPreview">
+          <div *ngIf="isImage(fileUrl)">
+            <img
+              [src]="previewFileUrl"
+              alt="Image Preview"
+              class="img-fluid"
+            />
+          </div>
+          <div *ngIf="isPDF(fileUrl)">
+            <iframe
+              [src]="previewFileUrl"
+              width="100%"
+              height="500px"
+              frameborder="0"
+            ></iframe>
+          </div>
+          <div *ngIf="isXLSX(fileUrl)">
+            <iframe
+              [src]="previewFileUrl"
+              width="100%"
+              height="500px"
+              frameborder="0"
+            ></iframe>
+          </div>
+          
+          
+        </ng-container>
+        <ng-template #noPreview>
+          <p>No file selected for preview.</p>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+</div> -->
+
+
+<!-- File Preview Modal -->
 <div
   class="modal fade"
   id="filePreviewModal"
@@ -501,14 +497,17 @@
       <div class="modal-body">
         <!-- Preview Content -->
         <ng-container *ngIf="previewFileUrl; else noPreview">
-          <div *ngIf="isImage(fileUrl)">
+          <!-- Image Preview -->
+          <div *ngIf="isImage(fileName)">
             <img
               [src]="previewFileUrl"
               alt="Image Preview"
               class="img-fluid"
             />
           </div>
-          <div *ngIf="isPDF(fileUrl)">
+
+          <!-- PDF Preview -->
+          <div *ngIf="isPDF(fileName)">
             <iframe
               [src]="previewFileUrl"
               width="100%"
@@ -516,8 +515,15 @@
               frameborder="0"
             ></iframe>
           </div>
-          <div *ngIf="!isImage(fileUrl) && !isPDF(fileUrl)">
-            <p>Preview not available for this file type.</p>
+
+          <!-- XLSX Preview -->
+          <div *ngIf="isXLSX(fileName)">
+            <iframe
+              [src]="previewFileUrl"
+              width="100%"
+              height="500px"
+              frameborder="0"
+            ></iframe>
           </div>
         </ng-container>
         <ng-template #noPreview>
@@ -527,8 +533,6 @@
     </div>
   </div>
 </div>
-
-
 
 <!-- Add Product Modal -->
 <div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">

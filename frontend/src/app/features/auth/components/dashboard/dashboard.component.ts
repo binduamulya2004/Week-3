@@ -14,6 +14,8 @@ import {AuthService} from 'src/app/core/services/auth.service';
 import { DomSanitizer } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 
+
+
 import {  SafeResourceUrl } from '@angular/platform-browser';
 @Component({
   selector: 'app-dashboard',
@@ -28,7 +30,7 @@ export class DashboardComponent implements OnInit {
   isModalOpen: boolean = false; // Flag to control modal visibility
   selectedFile: File | null = null; // Stores the selected file for upload
   isUploading: boolean = false; // Indicates if file is being uploaded
-
+  
   vendorCount: number = 0;
   products: any[] = [];
   vendors: any[] = [];
@@ -51,7 +53,7 @@ fileUrl="";
   allSelected: boolean = false; // Flag to track if all rows are selected
 
   selectedProductId: number | null = null;
-
+  fileName = "";
   searchTerm: string = '';
   selectedColumns: string[] = []; // No columns selected by default
   filterColumns: string[] = [
@@ -1110,7 +1112,34 @@ selectedStatus: string = '';
     this.uploadFilesforimport();
   }
 
+ 
+
+  // previewFile(fileName: string) {
+  //   const userId = this.authService.getUserId();
+  
+  //   if (!userId || !fileName) {
+  //     console.error('User ID or file name is undefined');
+  //     return;
+  //   }
+  
+  //   const fileUrl = `https://${environment.awsBucketName}.s3.${environment.awsRegion}.amazonaws.com/bindu@AKV0796/${userId}/${fileName}`;
+  //   console.log('File URL:', fileUrl); // Debugging purpose
+  //   this.fileUrl = fileUrl;
+  
+  //   // Set preview URL
+  //   if (this.isImage(fileUrl) || this.isPDF(fileUrl)) {
+  //     this.previewFileUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
+  //     console.log()
+  //   } else if (this.isXLSX(fileUrl)) {
+  //     // Use a library like SheetJS (XLSX.js) to parse and render the Excel file
+  //     // this.downloadAndPreviewExcel(fileUrl);
+  //   } else {
+  //     this.previewFileUrl = null; // No preview for unsupported files
+  //   }
+  // }
+
   previewFile(fileName: string) {
+    this.fileName=  fileName
     const userId = this.authService.getUserId();
   
     if (!userId || !fileName) {
@@ -1120,9 +1149,24 @@ selectedStatus: string = '';
   
     const fileUrl = `https://${environment.awsBucketName}.s3.${environment.awsRegion}.amazonaws.com/bindu@AKV0796/${userId}/${fileName}`;
     console.log('File URL:', fileUrl); // Debugging purpose
-    this.fileUrl=fileUrl;
-    this.previewFileUrl =this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
+  
+    if (this.isImage(fileUrl) || this.isPDF(fileUrl)) {
+      // Handle image or PDF previews
+      this.previewFileUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
+      console.log('Preview URL for image/pdf:', this.previewFileUrl);
+    } else if (this.isXLSX(fileUrl)) {
+      // Handle .xlsx file previews
+      const officeViewerBaseUrl = 'https://view.officeapps.live.com/op/embed.aspx?src=';
+      const officeUrl = `${officeViewerBaseUrl}${encodeURIComponent(fileUrl)}`;
+      this.previewFileUrl = this.sanitizer.bypassSecurityTrustResourceUrl(officeUrl);
+      console.log('Preview URL for .xlsx:', this.previewFileUrl);
+    } else {
+      console.error('Unsupported file type.');
+      this.previewFileUrl = null;
+    }
   }
+  
+  
   
   setPreviewFileUrl(fileUrl:string): void {
     this.previewFileUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
@@ -1140,6 +1184,10 @@ selectedStatus: string = '';
     return fileUrl.endsWith('.pdf');
   } 
 
+  isXLSX(fileUrl: string): boolean {
+    return fileUrl.endsWith('.xlsx');
+  }
+  
 
 
   searchQuery(event: any) {
