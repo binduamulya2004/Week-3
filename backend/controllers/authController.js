@@ -60,6 +60,8 @@ function generateRefreshToken(user) {
 
 
 module.exports = {
+
+
   async signup(req, res, next) {
     try {
       const { error } = signupValidation.validate(req.body);
@@ -82,25 +84,6 @@ module.exports = {
       next(err);
     }
   },
-
-  // async login(req, res, next) {
-  //   console.log("******");
-  //   try {
-  //     console.log(req.body, 'req.body');
-  //     const { email, password } = req.body;
-  //     const user = await userModel.findByEmail(email);
-  //     if (!user) return res.status(404).json({ message: 'User not found' });
-
-  //     const isValidPassword = await bcrypt.compare(password, user.password);
-  //     console.log('isValidPassword:', isValidPassword);
-  //     if (!isValidPassword) return res.status(401).json({ message: 'Invalid credentials' });
-
-  //     const token = jwt.sign({ id: user.user_id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  //     res.status(200).json({ token, user });
-  //   } catch (err) {
-  //     next(err);
-  //   }
-  // },
 
 
   async login(req, res, next) {
@@ -533,7 +516,6 @@ module.exports = {
     }
   },
 
-
   // Update product method
   async updateProduct(req, res, next) {
     try {
@@ -632,8 +614,6 @@ module.exports = {
   }
   ,
 
-
-
   // Controller to soft delete product
   async deleteProduct(req, res, next) {
     console.log("******")
@@ -665,69 +645,8 @@ module.exports = {
         .json({ message: 'Failed to delete product', error: error.message });
     }
   },
-  
-
-
 
 //cartcontrollers
-
-  //   async moveToCart(req, res) {
-  //   try {
-  //     const products = req.body.products; // Assume the products are sent in the request body
-  //     const userId = req.user.id; // Assume userId is retrieved from the authenticated request
-
-  //     console.log('products in movetocart:', products);
-  //     console.log('userId:', userId);
-
-  //     if (!Array.isArray(products) || products.length === 0) {
-  //       return res.status(400).json({ error: 'Invalid product details.' });
-  //     }
-
-  //     // Function to move products to cart
-  //     const moveToCart = async (products) => {
-  //       for (const product of products) {
-  //         const { productId, vendorId, quantity } = product;
-
-          
-
-  //         // Check if the product exists
-  //         const productExists = await productModel.getProductById(productId);
-  //         if (!productExists) {
-  //           throw new Error(`Product with ID ${productId} does not exist.`);
-  //         }
-  //         console.log("ProductExists:", productExists);
-
-  //         // Check if the vendor exists
-  //         const vendorExists = await vendorModel.getVendorById(vendorId);
-  //         if (!vendorExists) {
-  //           throw new Error(`Vendor with ID ${vendorId} does not exist.`);
-  //         }
-  //         console.log("VendorExists:", vendorExists);
-
-  //         console.log(quantity, 'quantity in backend');
-
-  //         // Add item to cart
-  //         await cartsModel.addItemToCart({
-  //           user_id: userId,
-  //           product_id: productId,
-  //           vendor_id: vendorId,
-  //           quantity: quantity,
-  //         });
-  //       }
-  //     };
-
-  //     // Call the function
-  //     await moveToCart(products);
-
-  //     // Respond with success
-  //     res.status(200).json({ message: 'Products moved to cart successfully.' });
-  //   } catch (error) {
-  //     console.error('Error moving products to cart:', error.message);
-  //     res.status(500).json({ error: error.message || 'Failed to move products to cart.' });
-  //   }
-  // },
-
-
 
   async moveToCart(req, res) {
   const products = req.body.products; // Assuming `products` is passed in the request body
@@ -776,184 +695,6 @@ module.exports = {
   }
 },
 
-//   async  getCartItems(req, res) {
-//   try {
-//     const { page = 1, limit = 5 } = req.query;
-//     const offset = (page - 1) * limit;
-    
-//     console.log('page:', page);
-//     const userId = req.user.id;
-
-//     // Database queries for fetching total items and cart details
-//     const totalItemsQuery = knex('carts')
-//       .count('* as total')
-//       .where('user_id', userId)
-//       .andWhere('quantity', '>', 0) // Ensure quantity is greater than 0
-//       .join('products', 'carts.product_id', '=', 'products.product_id')
-//       .andWhere('products.status', '=', 1) // Ensure the product is available
-//       .first();
-
-    
-
-
-//     const cartItemsQuery = knex('carts')
-//   .join('products', 'carts.product_id', '=', 'products.product_id')
-//   .join('categories', 'products.category_id', '=', 'categories.category_id')
-//   .join('product_to_vendor', function () {
-//     this.on('products.product_id', '=', 'product_to_vendor.product_id')
-//       .andOn('carts.vendor_id', '=', 'product_to_vendor.vendor_id'); // Ensure cart's vendor matches
-//   })
-//   .join('vendors', 'product_to_vendor.vendor_id', '=', 'vendors.vendor_id')
-//   .select(
-//     'carts.id',
-//     'products.product_id',
-//     'products.product_name',
-//     'products.product_image',
-//     'categories.category_name',
-//     'vendors.vendor_name',
-//     'carts.quantity',
-//     'carts.quantity as initialQuantity',
-//     'products.quantity_in_stock'
-//   )
-//   .where('carts.user_id', userId)  // Replace userId with the actual user ID or a parameter
-//   .andWhere('carts.quantity', '>', 0) // Ensure quantity is greater than 0
-//   .andWhere('products.status', '=', 1) // Ensure the product is available
-//   .limit(limit) // Limit the number of results
-//   .offset(offset) // Offset the results for pagination
-//   .debug(); // Debugging to see the SQL query
-
-
-// // Execute the query and fetch result
-
-
-//     // Execute both queries in parallel
-//     const [totalResult, cartItems] = await Promise.all([totalItemsQuery, cartItemsQuery]);
-//       console.log('cartItems:', cartItems);
-
-//     console.log('totalResult:', totalResult);
-
-    
-
-//     if (!totalResult?.total || cartItems.length === 0) {
-//       return res.status(404).json({ success: false, message: 'No cart items found for this user' });
-//     }
-
-//     //console.log(products, 'products');
-
-//     res.json({
-//       success: true,
-//       total: totalResult.total,
-//       page: Number(page),
-//       limit: Number(limit),
-//       products: cartItems,
-//     });
-//   } catch (error) {
-//     console.error('Error fetching cart items:', error);
-//     res.status(500).json({ success: false, message: 'Internal Server Error' });
-//   }
-// },
-
-  
-  
-  
-  
-  
-  
-
-
-  // Controller to update cart item quantities
-  // async updateCartItemQuantity(req, res) {
-  //   try {
-  //     console.log(req.user)
-  //     const userId = req.user.id; // Extract user ID from authenticated request
-  //     const { products } = req.body; // Assume an array of products is sent in the request body
-  //     console.log(userId, 'userId');
-  //     if (!Array.isArray(products) || products.length === 0) {
-  //       return res.status(400).json({ error: 'Invalid request body. Products array is required.' });
-  //     }
-
-  //     // Function to update the quantity of a single cart item
-  //     const updateCartItemQuantity = async (productId, changeInQuantity, userId) => {
-  //       console.log("Product_Id:", productId);
-  //       console.log("ChangeInQuantity:", changeInQuantity);
-  //       console.log("UserId:", userId);
-
-  //       const trx = await knex.transaction(); // Start a transaction
-  //       try {
-  //         // Fetch current product details
-  //         const product = await trx('products').where('product_id', productId).first();
-  //         if (!product) {
-  //           throw { status: 404, message: 'Product not found' };
-  //         }
-
-  //         // Calculate new stock
-  //         const newStock = product.quantity_in_stock - changeInQuantity;
-  //         if (newStock < 0) {
-  //           throw { status: 400, message: 'Not enough stock available' };
-  //         }
-
-  //         // Fetch current cart item details
-  //         const cartItem = await trx('carts')
-  //           .where('product_id', productId)
-  //           .andWhere('user_id', userId)
-  //           .first();
-  //         if (!cartItem) {
-  //           throw { status: 404, message: 'Cart item not found' };
-  //         }
-
-  //         // Calculate updated cart quantity
-  //         const updatedCartQuantity = cartItem.quantity + changeInQuantity;
-  //         if (updatedCartQuantity < 0) {
-  //           throw { status: 400, message: 'Invalid cart quantity' };
-  //         }
-
-  //         // Update cart table
-  //         await trx('carts')
-  //           .where('product_id', productId)
-  //           .andWhere('user_id', userId)
-  //           .update({ quantity: updatedCartQuantity });
-
-  //         // Update product stock
-  //         await trx('products')
-  //           .where('product_id', productId)
-  //           .update({ quantity_in_stock: newStock });
-
-  //         await trx.commit(); // Commit transaction
-  //         return { success: true };
-  //       } catch (error) {
-  //         await trx.rollback(); // Rollback transaction in case of error
-  //         console.error('Transaction error:', error);
-  //         return { success: false, ...error };
-  //       }
-  //     };
-
-  //     // Iterate over all products and update their quantities in parallel
-  //     const updateResults = await Promise.all(
-  //       products.map(({ productId,  quantity }) =>
-  //         updateCartItemQuantity(productId, quantity, userId)
-  //       )
-  //     );
-
-  //     // Check for errors in the results
-  //     const errors = updateResults.filter((result) => !result.success);
-  //     if (errors.length > 0) {
-  //       return res.status(400).json({
-  //         error: 'Some updates failed',
-  //         details: errors.map((err) => ({ productId: err.productId, message: err.message || 'Unknown error' }))
-  //       });
-  //     }
-
-  //     return res.status(200).json({ message: 'Cart and product updated successfully' });
-  //   } catch (error) {
-  //     console.error('Error in updating cart items and products:', error);
-  //     return res.status(500).json({ error: 'Failed to update cart items and products' });
-  //   }
-  // },
-
-
-  // Update quantities in the cart and product stock with a transaction for multiple products
-  
-  
   async getCartItems(req, res) {
   try {
     const { page = 1, limit = 5 } = req.query;
@@ -1185,11 +926,6 @@ async updateCartQty(req, res) {
     return res.status(500).json({ error: 'Failed to update cart items and products' });
   }
 },
-  
-
-
-
-
 
   // Controller to delete a cart item and update product stock in one method
   async deleteCartItem(req, res) {
@@ -1235,33 +971,7 @@ async updateCartQty(req, res) {
   },
  
 
-
-   
-
- 
-  // // Upload file controller
-  // async uploadFile(req, res) {
-  //   const file = req.file;
-  //   const userId = req.user.id;
-
-  //   if (!file || !userId) return res.status(400).json({ error: 'File or User ID missing' });
-
-  //   try {
-  //     const fileName = `${file.originalname}`;
-  //     const fileBuffer = await sharp(file.buffer).resize(800, 800).toBuffer();
-  //     const fileUrl = await uploadToS3(fileBuffer, fileName, file.mimetype, userId);
-
-  //     console.log('File details:', JSON.stringify(file)); // Serialize the object
-
-      
-  //     res.status(200).json({ message: 'File uploaded successfully', fileUrl , fileName: file.originalname,mimeType: file.mimetype,encoding: file.encoding});
-  //   } catch (error) {
-  //     console.error('Error uploading file:', error);
-  //     res.status(500).json({ error: 'Failed to upload file' });
-  //   }
-  // },
-
-  // Upload file controller
+// Upload file controller
 async uploadFile(req, res) {
   const file = req.file;
   const userId = req.user.id;
@@ -1275,17 +985,22 @@ async uploadFile(req, res) {
     let fileBuffer;
 
     // Check file type
-    if (file.mimetype.startsWith('image/')) {
-      // Process image files using sharp
-      fileBuffer = await sharp(file.buffer).resize(800, 800).toBuffer();
-    } else if (file.mimetype === 'application/pdf') {
-      // For PDF, no resizing needed
-      fileBuffer = file.buffer;
-    }
-      else {
-      // Unsupported file type
-      return res.status(400).json({ error: 'Unsupported file type' });
-    }
+if (file.mimetype.startsWith('image/')) {
+  // Process image files using sharp
+  fileBuffer = await sharp(file.buffer).resize(800, 800).toBuffer();
+} else if (file.mimetype === 'application/pdf') {
+  // For PDF, no resizing needed
+  fileBuffer = file.buffer;
+} else if (
+  file.mimetype === 'application/vnd.ms-excel' || // For .xls
+  file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' // For .xlsx
+) {
+  // Handle Excel files
+  fileBuffer = file.buffer; // If no transformation is required, just keep the buffer as is
+} else {
+  // Unsupported file type
+  return res.status(400).json({ error: 'Unsupported file type' });
+}
 
     // Upload to S3 (or any storage service)
     const fileUrl = await uploadToS3(fileBuffer, fileName, file.mimetype, userId);
@@ -1398,83 +1113,6 @@ async uploadFile(req, res) {
 
 
  // Import data controller
-// async importFile(req, res) {
-//   const products = req.body;  // No need for JSON.parse since express.json() handles it.
-
-//   if (!Array.isArray(products)) {
-//     return res.status(400).json({ error: 'Invalid JSON format: Expected an array' });
-//   }
-
-//   console.log("products: ", products);
-
-//   try {
-//     // Process each product in the imported data
-//     for (let product of products) {
-//       // Check if the category exists
-//       let category = await knex('categories').where('category_name', product.category_name).first();
-//       if (!category) {
-//         // If the category does not exist, create a new one
-//         category = await knex('categories').insert({
-//           category_name: product.category_name,
-//           description: product.category_description || '',  // Assuming there might be a description
-//           status: '1'  // Active
-//         }).returning('*');
-//       }
-
-//       // Check if the vendor exists
-//       let vendorName = product.vendorName;
-//       if (!vendorName) {
-//         return res.status(400).json({ error: 'Vendor name is missing' });
-//       }
-
-//       let vendor = await knex('vendors').where('vendor_name', vendorName).first();
-//       if (!vendor) {
-//         // If the vendor does not exist, create a new one
-//         vendor = await knex('vendors').insert({
-//           vendor_name: vendorName,
-//           contact_name: product.vendor_contact_name || '',
-//           address: product.vendor_address || '',
-//           city: product.vendor_city || '',
-//           postal_code: product.vendor_postal_code || '',
-//           country: product.vendor_country || '',
-//           phone: product.vendor_phone || '',
-//           status: '1'  // Active
-//         }).returning('*');
-//       }
-
-//       // Insert the product if it doesn't exist
-//       let existingProduct = await knex('products').where('product_name', product.product_name).first();
-//       if (!existingProduct) {
-//         // Insert new product
-//         existingProduct = await knex('products').insert({
-//           product_name: product.product_name,
-//           category_id: category.category_id,  // Reference to category
-//           quantity_in_stock: product.quantity_in_stock || 0,
-//           unit_price: product.unit_price || 0,
-//           product_image: product.product_image || '', // Assuming product image is passed
-//           unit: product.unit || '',  // Assuming unit is passed
-//           status: '1'  // Active
-//         }).returning('*');
-//       }
-
-//       console.log("existing product", existingProduct);
-
-//       // Optionally, associate the product with the vendor
-//       await knex('product_to_vendor').insert({
-//         vendor_id: vendor.vendor_id,  // Reference to vendor
-//         product_id: existingProduct.product_id,  // Reference to product
-//         status: '1'  // Active
-//       });
-//     }
-
-//     res.status(200).json({ message: 'Data imported successfully' });
-//   } catch (error) {
-//     console.error('Error importing data:', error);
-//     res.status(500).json({ error: 'Error importing data' });
-//   }
-// }
-// ,
-
 async importFile(req, res) {
   const products = req.body; // Assuming express.json() middleware handles JSON parsing
 

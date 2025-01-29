@@ -42,16 +42,13 @@ export class DashboardComponent implements OnInit {
   totalItems: number = 0;
   totalPages: number = 0;
   paginatedProducts: any[] = [];
-fileUrl="";
   uploadedFiles: any[] = [];
   selectedFiles: string[] = [];
 
   isProductModalOpen: boolean = false;
   addProductForm: FormGroup;
   selectedProducts: any[] = [];
-  
   allSelected: boolean = false; // Flag to track if all rows are selected
-
   selectedProductId: number | null = null;
   fileName = "";
   searchTerm: string = '';
@@ -77,15 +74,9 @@ fileUrl="";
   ];
 
 
-selectedCategory: string = '';
-selectedVendor: string = '';
-selectedStatus: string = '';
-
-
-
-
-
-
+  selectedCategory: string = '';
+  selectedVendor: string = '';
+  selectedStatus: string = '';
 
 
   quantityChanges: { [key: number]: number } = {};
@@ -107,8 +98,8 @@ selectedStatus: string = '';
   isDragging: boolean = false;
   isModalOpenprofile=false;
 
- 
   previewFileUrl: SafeResourceUrl | null = null;
+  fileUrl="";
 
 
   constructor(private http: HttpClient,  private router: Router, private fb: FormBuilder,private authService: AuthService,private sanitizer: DomSanitizer) {
@@ -129,7 +120,6 @@ selectedStatus: string = '';
     this.getVendorsCount();
     // this.getProducts();
     this.loadProducts();
-
     this.getCategories();
     this.getVendors();
     this.fetchCartPage(this.currentCartPage);
@@ -201,41 +191,7 @@ selectedStatus: string = '';
   } else if (newQuantity < 0) {
     alert('Quantity cannot be negative.');
   }
-}
-  // fetchCartPage(page: number): void {
-  //   if (page < 1 || (this.totalCartPages && page > this.totalCartPages)) return;
-
-  //   this.http
-  //     .get<{
-  //       success: string;
-  //       products: product[];
-  //       total: number;
-  //       page: number;
-  //       limit: number;
-  //     }>(
-  //       `${environment.apiUrl}/auth/cart?page=${page}&limit=${this.cartPageSize}`
-  //     )
-  //     .subscribe({
-  //       next: (data) => {
-  //         console.log(data);
-  //         this.cartProducts = data.products;
-  //         this.totalCartItems = data.total;
-  //         this.currentCartPage = data.page;
-  //         this.totalCartPages = Math.ceil(
-  //           this.totalCartItems / this.cartPageSize
-  //         );
-  //         this.cartPages = Array.from(
-  //           { length: this.totalCartPages },
-  //           (_, i) => i + 1
-  //         );
-  //         console.log(this.cartPages);
-  //         console.log('cartProducts: ', this.cartProducts);
-  //       },
-  //       error: (error) => {
-  //         console.error('Error fetching cartProducts:', error);
-  //       },
-  //     });
-  // }
+  }
 
   fetchCartPage(page: number): void {
     if (page < 1 || (this.totalCartPages && page > this.totalCartPages)) return;
@@ -353,10 +309,6 @@ selectedStatus: string = '';
       });
   }
   
-  
-  
-
-
   clearSelectedProducts() {
     this.selectedProducts = [];
   }
@@ -387,7 +339,6 @@ selectedStatus: string = '';
     }
   }
 
- 
 
   // Get filtered products with search term and selected columns
   getFilteredProducts(searchTerm: string, columns: string): void {
@@ -763,7 +714,6 @@ selectedStatus: string = '';
       );
   }
   
-
   // Navigate to the previous page
   previousPage() {
     if (this.currentPage > 1) {
@@ -1112,31 +1062,6 @@ selectedStatus: string = '';
     this.uploadFilesforimport();
   }
 
- 
-
-  // previewFile(fileName: string) {
-  //   const userId = this.authService.getUserId();
-  
-  //   if (!userId || !fileName) {
-  //     console.error('User ID or file name is undefined');
-  //     return;
-  //   }
-  
-  //   const fileUrl = `https://${environment.awsBucketName}.s3.${environment.awsRegion}.amazonaws.com/bindu@AKV0796/${userId}/${fileName}`;
-  //   console.log('File URL:', fileUrl); // Debugging purpose
-  //   this.fileUrl = fileUrl;
-  
-  //   // Set preview URL
-  //   if (this.isImage(fileUrl) || this.isPDF(fileUrl)) {
-  //     this.previewFileUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
-  //     console.log()
-  //   } else if (this.isXLSX(fileUrl)) {
-  //     // Use a library like SheetJS (XLSX.js) to parse and render the Excel file
-  //     // this.downloadAndPreviewExcel(fileUrl);
-  //   } else {
-  //     this.previewFileUrl = null; // No preview for unsupported files
-  //   }
-  // }
 
   previewFile(fileName: string) {
     this.fileName=  fileName
@@ -1166,14 +1091,10 @@ selectedStatus: string = '';
     }
   }
   
-  
-  
   setPreviewFileUrl(fileUrl:string): void {
     this.previewFileUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
   }
   
-  
-
   // Check if the file is an image
   isImage(fileUrl: string): boolean {
     return /\.(jpeg|jpg|png|gif|webp)$/i.test(fileUrl);

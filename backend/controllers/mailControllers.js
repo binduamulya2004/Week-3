@@ -4,6 +4,8 @@ const userModel = require('../models/userModel');
 const dotenv = require('dotenv');
 const knex = require('../mysql/connection');
 const bcrypt=require('bcrypt');
+
+
 const forgotPassword = async (req,res) => {
     try {
       const { email } = req.body;
