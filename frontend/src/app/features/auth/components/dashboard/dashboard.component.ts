@@ -311,6 +311,8 @@ export class DashboardComponent implements OnInit {
   
   clearSelectedProducts() {
     this.selectedProducts = [];
+
+    this.loadProducts();
   }
 
   toggleFilters() {
