@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { FormGroup, FormControl, Validators, FormArray } from '@angular/forms';
+import { FormGroup, FormControl, Validators } from '@angular/forms';
 import { environment } from 'src/environments/environment';
 
 @Component({
@@ -10,7 +10,7 @@ import { environment } from 'src/environments/environment';
   styleUrls: ['./resetpassword.component.scss'],
 })
 export class ResetpasswordComponent implements OnInit {
-  resetForm!: FormGroup; // Define FormGroup
+  resetForm!: FormGroup;
   userId: string | null = '';
   accessToken: string | null = '';
 
@@ -21,28 +21,22 @@ export class ResetpasswordComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Retrieve `id` and `accessToken` from the route parameters
     this.userId = this.route.snapshot.paramMap.get('id');
     this.accessToken = this.route.snapshot.paramMap.get('accessToken');
 
-    // Initialize the form with FormGroup, FormControl, and Validators
     this.resetForm = new FormGroup({
-      passwordFields: new FormArray([
-        new FormControl('', [Validators.required, Validators.minLength(6)]), // Password Field
-        new FormControl('', [Validators.required, Validators.minLength(6)]), // Confirm Password Field
-      ]),
+      password: new FormControl('', [Validators.required, Validators.minLength(6)]),
+      confirmPassword: new FormControl('', [Validators.required, Validators.minLength(6)]),
     });
   }
 
-  // Getter for FormArray
-  get passwordFields(): FormArray {
-    return this.resetForm.get('passwordFields') as FormArray;
-  }
-
   resetPassword(): void {
-    const password = this.passwordFields.at(0).value; // Get the password
-    const confirmPassword = this.passwordFields.at(1).value; // Get the confirm password
-    
+    console.log("resett password");
+    const password = this.resetForm.get('password')?.value;
+    const confirmPassword = this.resetForm.get('confirmPassword')?.value;
+
+    console.log(password);
+    console.log(confirmPassword);
 
     if (password !== confirmPassword) {
       alert('Passwords do not match.');
@@ -53,7 +47,7 @@ export class ResetpasswordComponent implements OnInit {
     this.http.post(url, { password }).subscribe({
       next: () => {
         alert('Password reset successfully. You can now log in.');
-        this.router.navigate(['/login']); // Redirect to the login page
+        this.router.navigate(['/login']);
       },
       error: (err) => {
         console.error('Error resetting password:', err);

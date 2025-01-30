@@ -55,6 +55,7 @@ export class RegisterComponent {
     // Check if the error indicates that the user already exists
     if (error.status === 500) { // Assuming 409 Conflict status code for existing user
       alert('User already exists. Please use a different email.');
+      console.log(error);
     } else {
       // Handle other errors
       alert('Registration failed. Please check your credentials and try again.');

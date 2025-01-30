@@ -81,6 +81,7 @@ module.exports = {
 
       res.status(201).json({ message: 'User created successfully' });
     } catch (err) {
+      console.log(err);
       next(err);
     }
   },
