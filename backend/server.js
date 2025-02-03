@@ -12,6 +12,7 @@ const { decryptMiddleware, encryptMiddleware } = require('./middleware/jwt/crypt
 const { swaggerUi, swaggerSpec } = require('./config/swaggerConfig');
 
 const rateLimit = require('express-rate-limit'); 
+const { processPendingFiles } = require('./cronJobs');
 
 dotenv.config();
 const app = express();
@@ -143,6 +144,11 @@ app.use((err, req, res, next) => {
 // Upgrade HTTP server to support WebSocket
 app.server = app.listen(process.env.PORT || 3000, () => {
   console.log(`Server running on port ${process.env.PORT || 3000}`);
+   // Run the process once at startup
+   processPendingFiles();
+
+   // Set interval to run every 10 minutes (600,000 ms)
+   setInterval(processPendingFiles, 10 * 60 * 1000);
 });
 
 // Handle WebSocket upgrade request

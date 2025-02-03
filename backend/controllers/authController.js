@@ -17,6 +17,10 @@ const archiver = require('archiver');
 const { decryptMiddleware, encryptMiddleware } = require('../middleware/jwt/cryptoMiddleware');
 
 const refreshTokenModel = require('../models/refreshTokenModel');
+const processFile=require('./processfile');
+const axios = require('axios');
+const XLSX = require('xlsx');
+const crypto = require('crypto');//for checksum
 
 
 dotenv.config();
@@ -60,6 +64,7 @@ function generateRefreshToken(user) {
 
 
 module.exports = {
+  uploadToS3,
 
 
   async signup(req, res, next) {
@@ -329,53 +334,49 @@ module.exports = {
   
 
   //get products without search
+
   async getProducts(req, res) {
     try {
       console.log('req.query:', req.query);
-        const { page = 1, limit = 10 } = req.query;
-    const offset = (page - 1) * limit;
-
-    console.log('limit:', limit);
-    console.log('offset:', offset);
-
+      const { page = 1, limit = 10 } = req.query;
+      const offset = (page - 1) * limit;
   
-
+      console.log('limit:', limit);
+      console.log('offset:', offset);
+  
       // Get all records with necessary joins
       const allProducts = await knex('products')
         .join('categories', 'products.category_id', '=', 'categories.category_id')
         .leftJoin('product_to_vendor', 'products.product_id', '=', 'product_to_vendor.product_id')
         .leftJoin('vendors', 'product_to_vendor.vendor_id', '=', 'vendors.vendor_id')
         .select('products.*', 'categories.category_name', 'vendors.vendor_name')
-        .where('products.status', 1)
-        
-       
-
-      // Group vendors by product
+        .where('products.status', 1);
+  
+      // Group vendors by product and eliminate duplicates
       const groupedProducts = allProducts.reduce((acc, product) => {
         const { product_id, vendor_name, ...productData } = product;
-
+  
         if (!acc[product_id]) {
           acc[product_id] = { ...product, vendors: [] };
         }
-
+  
         if (vendor_name) {
-          acc[product_id].vendors.push(vendor_name);
+          // Use a Set to ensure vendors are unique
+          acc[product_id].vendors = [...new Set([...acc[product_id].vendors, vendor_name])];
         }
-
+  
         return acc;
       }, {});
-
+  
       // Convert the grouped products back to an array
       const productList = Object.values(groupedProducts);
-
+  
       // Pagination in-memory
       const totalItems = productList.length;
       console.log(totalItems, 'totalItems');
       const paginatedProducts = productList.slice(offset, (offset + parseInt(limit)));
       console.log('products array:', paginatedProducts);
-
-        
-
+  
       // Send the paginated products and total count back
       res.json({
         products: paginatedProducts,
@@ -386,8 +387,8 @@ module.exports = {
       console.error('Error fetching products:', error);
       res.status(500).json({ message: 'Error fetching products' });
     }
-  },
-
+  }
+,  
   
   async addProduct(req, res, next) {
     try {
@@ -1113,99 +1114,244 @@ if (file.mimetype.startsWith('image/')) {
 
 
 
- // Import data controller
+// async importFile(req, res) {
+//   try {
+//       const { file } = req;
+//       const userId = req.user.id;
+//       console.log('file id ::', file);
+
+//       if (!file || !userId) {
+//           return res.status(400).json({ error: 'File or User ID missing' });
+//       }
+
+//       // Upload the file to S3
+//       const fileUrl = await uploadToS3(file.buffer, file.originalname, file.mimetype, userId);
+
+//       // Insert into import_files table
+//       const [fileId] = await knex('import_files').insert({
+//           user_id: userId,
+//           file_url: fileUrl,
+//           file_name: file.originalname,
+//           status: 'pending',
+//       });
+
+//       // Process the file asynchronously
+//       setImmediate(() => module.exports.processFile(fileUrl, fileId, userId));
+
+
+//       res.status(200).json({ message: 'File uploaded successfully, processing in background.', fileId, fileUrl });
+
+//   } catch (error) {
+//       console.error('Error importing file:', error);
+//       res.status(500).json({ error: 'File import failed' });
+//   }
+// }
+
+
+//,
+
+
+
+
+// async processFile(fileUrl, fileId, userId) {
+//   try {
+//     console.log(`Processing file: ${fileUrl}`);
+
+//     // Fetch file from S3
+//     const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+//     const workbook = XLSX.read(response.data, { type: 'buffer' });
+//     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+//     const records = XLSX.utils.sheet_to_json(worksheet);
+
+//     let errors = [];  // Collect all errors here
+//     let validData = [];
+//     let productVendorRelations = [];
+
+//     for (const record of records) {
+//         let recordErrors = [];
+        
+//         // Check required fields and add corresponding error messages
+//         if (!record.product_name) recordErrors.push('product_name cannot be null');
+//         if (!record.vendors) recordErrors.push('vendors cannot be null');
+//         if (!record.category_name) recordErrors.push('category_name cannot be null');
+//         if (!record.unit_price) recordErrors.push('unit_price cannot be null');
+//         if (!record.quantity_in_stock) recordErrors.push('quantity_in_stock cannot be null');
+
+//         if (recordErrors.length > 0) {
+//             errors.push({ 
+//                 ...record, 
+//                 error: recordErrors.join(', ') 
+//             });
+//             continue; // Skip this record and move to the next
+//         }
+
+//         try {
+//             // Ensure category exists and get category_id
+//             let category = await knex('categories').where('category_name', record.category_name).first();
+//             if (!category) {
+//                 errors.push({ 
+//                     ...record, 
+//                     error: `Category "${record.category_name}" doesn't exist` 
+//                 });
+//                 continue;
+//             }
+
+//             // Convert vendors into an array and trim each vendor
+//             let vendors = record.vendors.split(',').map(vendor => vendor.trim());
+//             let validVendors = [];
+
+//             // Process each vendor
+//             for (let vendorName of vendors) {
+//                 let vendor = await knex('vendors').where('vendor_name', vendorName).first();
+//                 if (!vendor) {
+//                     errors.push({ 
+//                         ...record, 
+//                         error: `Vendor "${vendorName}" doesn't exist` 
+//                     });
+//                     continue;
+//                 }
+//                 validVendors.push(vendor);
+//             }
+
+//             if (validVendors.length === 0) {
+//                 errors.push({ ...record, error: 'No valid vendors found' });
+//                 continue;
+//             }
+
+//             // Check if the product exists
+//             let product = await knex('products').where('product_name', record.product_name).first();
+//             if (!product) {
+//                 // If the product doesn't exist, insert a new product and update the relationship
+//                 await knex('products').insert({
+//                     product_name: record.product_name,
+//                     category_id: category.category_id,
+//                     unit_price: record.unit_price,
+//                     quantity_in_stock: record.quantity_in_stock,
+//                     status: record.status || null,  // Set default value
+//                     product_image: null,  // Set default value
+//                     unit: null  // Set default value
+//                 });
+
+//                 // Retrieve the newly inserted product_id
+//                 product = await knex('products').where('product_name', record.product_name).first();
+//             }
+
+//             // Update product details
+//             await knex('products').where('product_id', product.product_id).update({
+//                 unit_price: record.unit_price,
+//                 quantity_in_stock: record.quantity_in_stock
+//             });
+
+//             // Store vendor-product relationships
+//             for (const vendor of validVendors) {
+//                 const existingRelation = await knex('product_to_vendor')
+//                     .where({ product_id: product.product_id, vendor_id: vendor.vendor_id })
+//                     .first();
+
+//                 if (!existingRelation) {
+//                     await knex('product_to_vendor').insert({
+//                         product_id: product.product_id,
+//                         vendor_id: vendor.vendor_id,
+//                         status: 1  // Assuming 1 is active
+//                     });
+//                 }
+//             }
+
+//         } catch (err) {
+//             errors.push({ ...record, error: err.message });
+//         }
+//     }
+
+//     // Generate error file only if there are errors
+//     if (errors.length > 0) {
+//         const errorSheet = XLSX.utils.json_to_sheet(errors);
+//         const errorWorkbook = XLSX.utils.book_new();
+//         XLSX.utils.book_append_sheet(errorWorkbook, errorSheet, 'Errors');
+
+//         const errorFileName = `errors-${Date.now()}.xlsx`;
+//         const errorBuffer = XLSX.write(errorWorkbook, { type: 'buffer', bookType: 'xlsx' });
+
+//         // Upload error file to S3
+//         const errorFileUrl = await uploadToS3(errorBuffer, errorFileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', userId);
+
+//         // Update import_files table with the error file URL
+//         await knex('import_files').where('id', fileId).update({ 
+//             status: 'error', 
+//             error_file_url: errorFileUrl 
+//         });
+
+//     } else {
+//         // If no errors, mark the file as completed
+//         await knex('import_files').where('id', fileId).update({ status: 'completed' });
+//     }
+
+//   } catch (error) {
+//     console.error('Error processing file:', error);
+//     await knex('import_files').where('id', fileId).update({ status: 'error' });
+//   }
+// }
+
+
+
 async importFile(req, res) {
-  const products = req.body; // Assuming express.json() middleware handles JSON parsing
-
-  if (!Array.isArray(products)) {
-    return res.status(400).json({ error: 'Invalid JSON format: Expected an array' });
-  }
-
-  console.log("products: ", products);
-
   try {
-    for (let product of products) {
-      // Check if the category exists
-      let category = await knex('categories').where('category_name', product.category_name).first();
-      if (!category) {
-        const [categoryId] = await knex('categories').insert({
-          category_name: product.category_name,
-          description: product.category_description || '',
-          status: '1' // Active
-        });
-        category = { category_id: categoryId }; // Manually create the object
-      }
-
-      // Check if the vendor exists
-      let vendor = await knex('vendors').where('vendor_name', product.vendorName).first();
-      if (!vendor) {
-        const [vendorId] = await knex('vendors').insert({
-          vendor_name: product.vendorName,
-          contact_name: product.vendor_contact_name || '',
-          address: product.vendor_address || '',
-          city: product.vendor_city || '',
-          postal_code: product.vendor_postal_code || '',
-          country: product.vendor_country || '',
-          phone: product.vendor_phone || '',
-          status: '1' // Active
-        });
-        vendor = { vendor_id: vendorId }; // Manually create the object
-      }
-
-      // Insert the product if it doesn't exist
-      let existingProduct = await knex('products').where('product_name', product.product_name).first();
-      if (!existingProduct) {
-        const [productId] = await knex('products').insert({
-          product_name: product.product_name,
-          category_id: category.category_id, // Reference to category
-          quantity_in_stock: product.quantity_in_stock || 0,
-          unit_price: product.unit_price || 0,
-          product_image: product.product_image || '',
-          unit: product.unit || '',
-          status: '1' // Active
-        });
-        existingProduct = { product_id: productId }; // Manually create the object
-      }
-
-      console.log("existing product", existingProduct);
-
-      // Update or insert into product_to_vendor table
-      const productVendorAssociation = await knex('product_to_vendor')
-        .where({
-          product_id: existingProduct.product_id,
-          vendor_id: vendor.vendor_id
-        })
-        .first();
-
-      if (!productVendorAssociation) {
-        await knex('product_to_vendor').insert({
-          product_id: existingProduct.product_id,
-          vendor_id: vendor.vendor_id,
-          status: '1' // Active
-        });
-      } else {
-        // Optional: Update the status if the association already exists
-        await knex('product_to_vendor')
-          .where({
-            product_id: existingProduct.product_id,
-            vendor_id: vendor.vendor_id
-          })
-          .update({
-            status: '1' // Active
-          });
-      }
+    const { file } = req;
+    const userId = req.user.id;
+  
+    if (!file || !userId) {
+      return res.status(400).json({ error: 'File or User ID missing' });
     }
 
-    res.status(200).json({ message: 'Data imported successfully' });
+     // Compute file checksum (SHA-256)
+     const hash = crypto.createHash('sha256').update(file.buffer).digest('hex');
+     console.log('hash',hash);
+
+  
+    // Upload the file to S3
+    const fileUrl = await uploadToS3(file.buffer, file.originalname, file.mimetype, userId);
+  
+    // Insert into import_files table with "pending" status
+    const [fileId] = await knex('import_files').insert({
+      user_id: userId,
+      file_url: fileUrl,
+      file_name: file.originalname,
+      checksum: hash,
+      status: 'pending',
+    });
+  
+    res.status(200).json({ message: 'File uploaded successfully, processing in background.', fileId, fileUrl });
+  
   } catch (error) {
-    console.error('Error importing data:', error);
-    res.status(500).json({ error: 'Error importing data' });
+    console.error('Error importing file:', error);
+    res.status(500).json({ error: 'File import failed' });
   }
-}
+  },
+
+
+async retrieveFiles(req, res) {
+  try {
+    // Assuming user ID is stored in req.user (after authentication)
+    const userId = req.user.id; 
+    console.log('user id :::', userId); 
+    
+    // Fetch the import files for the logged-in user
+    const importFiles = await knex('import_files')
+      .where('user_id', userId)
+      .select('id', 'file_name', 'status', 'error_file_url');
+
+
+      console.log('****',importFiles);
+    
+    // Return the data as JSON response
+    res.json(importFiles);
+  } catch (error) {
+    console.error('Error fetching import files:', error);
+    res.status(500).json({ error: 'Failed to fetch import files' });
+  }
+},
+
+
+
+
 
 };
-
-
-
-
-

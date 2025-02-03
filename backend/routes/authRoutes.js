@@ -63,6 +63,13 @@ router.post('/reset-password/:id/:accessToken',mailController.resetPassword);
 
 router.put('/update-cart-quantity', authenticate, authController.updateCartQty)
 
+
+router.get('/retrieve-files',authenticate,authController.retrieveFiles);
+
+
+
+
+
 module.exports = router;
 
 

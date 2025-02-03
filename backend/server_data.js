@@ -5,21 +5,24 @@ const fs = require("fs");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
 // Predefined vendor names
 const vendors = [
-    "Amazon", "Blinkit", "Flipkart", "BigBasket", "Reliance", "Myntra", 
-    "InstaMart", "Zepto", "Ajio", "Meesho", "Nykaa", 
-    "Snapdeal", "FirstCry", "Pepperfry", "Swiggy", "Zomato", "UberEats"
-  ];
-  
-  // Predefined category names
-  const categories = [
-    "Electronics", "Food", "Clothing", "Stationery", "Furniture", 
-    "HomeAppliances", "BeautyAndCare", "Toys", "Books", 
-    "SportsAndFitness", "Automobiles", "Jewelery", "Medicines", 
-    "PetSupplies", "BabyCare", "Grocery", "OfficeSupplies"
-  ];
-  
+  "Amazon", "Blinkit", "Swiggy", "Zomato"
+];
+
+// Predefined category names
+const categories = [
+  "Electronics", "Foods", "Clothing", "Stationery", "Furniture",
+];
+
+// Function to get 2-3 random vendors
+function getRandomVendors() {
+  const shuffledVendors = [...vendors].sort(() => 0.5 - Math.random()); // Shuffle vendors
+  const numVendors = Math.floor(Math.random() * 2) + 2; // Get 2 or 3 vendors
+  return shuffledVendors.slice(0, numVendors).join(", "); // Convert to comma-separated string
+}
+
 // Function to generate sample product data
 function generateProducts(num) {
   const products = [];
@@ -28,10 +31,9 @@ function generateProducts(num) {
       product_name: faker.commerce.productName(),
       category_name: categories[Math.floor(Math.random() * categories.length)], // Pick a random category
       unit_price: faker.commerce.price(100, 5000, 2),
-      quantity_in_stock: faker.number.int({ min: 1, max: 100 }),
-      description: faker.commerce.productDescription(),
-      status: faker.datatype.boolean() ? 1 : 0, // 1 for active, 0 for inactive
-      vendorName: vendors[Math.floor(Math.random() * vendors.length)], // Pick a random vendor
+      quantity_in_stock: faker.number.int({ min: 1, max: 1000 }),
+      status: 1, // Set status as 1 for all products
+      vendors: getRandomVendors(), // Convert array to string
     });
   }
   return products;
@@ -39,7 +41,7 @@ function generateProducts(num) {
 
 // API Route to Generate and Serve XLSX File
 app.get("/generate-sample-data", (req, res) => {
-  const numRecords = req.query.records ? parseInt(req.query.records) : 10000; // Default 10,000
+  const numRecords = req.query.records ? parseInt(req.query.records) : 20000; 
 
   // Generate data
   const productsData = generateProducts(numRecords);
