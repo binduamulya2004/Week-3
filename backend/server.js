@@ -13,7 +13,7 @@ const { swaggerUi, swaggerSpec } = require('./config/swaggerConfig');
 
 const rateLimit = require('express-rate-limit'); 
 const { processPendingFiles } = require('./cronJobs');
-
+const cron = require('node-cron');
 dotenv.config();
 const app = express();
 
@@ -145,10 +145,11 @@ app.use((err, req, res, next) => {
 app.server = app.listen(process.env.PORT || 3000, () => {
   console.log(`Server running on port ${process.env.PORT || 3000}`);
    // Run the process once at startup
-   processPendingFiles();
+  processPendingFiles();
 
-   // Set interval to run every 10 minutes (600,000 ms)
-   setInterval(processPendingFiles, 10 * 60 * 1000);
+  // Schedule CRON Job every 10 minutes
+  cron.schedule('*/10 * * * *', processPendingFiles);
+  console.log('CRON Job scheduled: Runs every 10 minutes.');
 });
 
 // Handle WebSocket upgrade request

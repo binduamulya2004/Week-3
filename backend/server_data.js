@@ -41,7 +41,7 @@ function generateProducts(num) {
 
 // API Route to Generate and Serve XLSX File
 app.get("/generate-sample-data", (req, res) => {
-  const numRecords = req.query.records ? parseInt(req.query.records) : 20000; 
+  const numRecords = req.query.records ? parseInt(req.query.records) : 100; 
 
   // Generate data
   const productsData = generateProducts(numRecords);
@@ -56,7 +56,7 @@ app.get("/generate-sample-data", (req, res) => {
   XLSX.writeFile(wb, filePath);
 
   // Send the file as a response
-  res.download(filePath, "products_data.xlsx", (err) => {
+  res.download(filePath, "p_100.xlsx", (err) => {
     if (err) {
       console.error("Error sending file:", err);
       res.status(500).send("Error generating file");

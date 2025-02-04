@@ -4,9 +4,8 @@ const cron = require('node-cron');
 const { uploadToS3 } = require('./controllers/authController');
 const knex = require('./mysql/connection');
 const crypto = require('crypto');
-
+const {validateProduct}=require('./validations/productvalidations');
 const BATCH_SIZE = 500; // Process in batches of 500
-
 async function processPendingFiles() {
     try {
         console.log('Checking for pending files...');
@@ -33,77 +32,99 @@ async function processPendingFiles() {
                 const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                 const records = XLSX.utils.sheet_to_json(worksheet);
 
+                if (records.length === 0) {
+                    console.error(`Empty file: ${file.file_name}`);
+                    await knex('import_files').where('id', file.id).update({ status: 'error' });
+                    continue;
+                }
+
+                // Required columns
+                const requiredColumns = ["product_name", "vendors", "category_name", "unit_price", "quantity_in_stock"];
+                const fileColumns = Object.keys(records[0]).map(col => col.trim());
+
+                // Check if any required column is missing
+                const missingColumns = requiredColumns.filter(col => !fileColumns.includes(col));
+
+                if (missingColumns.length > 0) {
+                    console.error(`Missing required columns: ${missingColumns.join(', ')}`);
+                    await knex('import_files').where('id', file.id).update({ status: 'error' });
+                    continue;
+                }
+
                 let errors = [];
                 let validProducts = [];
                 let vendorProductMappings = [];
 
                 // Process each record
                 for (const record of records) {
+                    let sanitizedRecord = {};
                     let recordErrors = [];
 
-                    // Validate required fields
-                    if (!record.product_name) recordErrors.push('product_name cannot be null');
-                    if (!record.vendors) recordErrors.push('vendors cannot be null');
-                    if (!record.category_name) recordErrors.push('category_name cannot be null');
-                    if (!record.unit_price) recordErrors.push('unit_price cannot be null');
-                    if (!record.quantity_in_stock) recordErrors.push('quantity_in_stock cannot be null');
+                    // Extract only required fields and ignore extra ones
+                    for (let col of requiredColumns) {
+                        sanitizedRecord[col] = record[col] ? record[col].toString().trim() : '';
+                    }
+
+                    // Validate the record using Joi
+                    const { error } = validateProduct(sanitizedRecord);
+                    if (error) {
+                        recordErrors.push(...error.details.map(err => err.message));
+                    }
 
                     if (recordErrors.length > 0) {
-                        console.log(`Validation failed for product: ${record.product_name}`);
-                        errors.push({ ...record, error: recordErrors.join(', ') });
+                        console.log(`Validation failed for product: ${sanitizedRecord.product_name}`);
+                        errors.push({ ...sanitizedRecord, error: recordErrors.join(', ') });
                         continue;
                     }
 
                     try {
                         // Validate category
                         let category = await knex('categories')
-                            .where('category_name', record.category_name)
+                            .where('category_name', sanitizedRecord.category_name)
                             .first();
 
                         if (!category) {
-                            console.log(`Category not found: ${record.category_name}`);
-                            errors.push({ ...record, error: `Category "${record.category_name}" doesn't exist` });
+                            console.log(`Category not found: ${sanitizedRecord.category_name}`);
+                            errors.push({ ...sanitizedRecord, error: `Category "${sanitizedRecord.category_name}" doesn't exist` });
                             continue;
                         }
 
                         // Validate vendors
-                        let vendors = record.vendors.split(',').map(v => v.trim());
+                        let vendors = sanitizedRecord.vendors.split(',').map(v => v.trim());
                         let validVendors = [];
 
                         for (let vendorName of vendors) {
                             let vendor = await knex('vendors').where('vendor_name', vendorName).first();
                             if (!vendor) {
                                 console.log(`Vendor not found: ${vendorName}`);
-                                errors.push({ ...record, error: `Vendor "${vendorName}" doesn't exist` });
+                                errors.push({ ...sanitizedRecord, error: `Vendor "${vendorName}" doesn't exist` });
                                 continue;
                             }
                             validVendors.push(vendor);
                         }
 
                         if (validVendors.length === 0) {
-                            errors.push({ ...record, error: 'No valid vendors found' });
+                            errors.push({ ...sanitizedRecord, error: 'No valid vendors found' });
                             continue;
                         }
 
                         // Check if product exists
-                        let existingProduct = await knex('products').where('product_name', record.product_name).first();
+                        let existingProduct = await knex('products').where('product_name', sanitizedRecord.product_name).first();
 
                         const productData = {
-                            product_name: record.product_name,
+                            product_name: sanitizedRecord.product_name,
                             category_id: category.category_id,
-                            unit_price: record.unit_price,
-                            quantity_in_stock: record.quantity_in_stock,
+                            unit_price: sanitizedRecord.unit_price,
+                            quantity_in_stock: sanitizedRecord.quantity_in_stock,
                             status: 1
                         };
 
                         if (existingProduct) {
-                            console.log(`Product exists, updating: ${record.product_name}`);
                             // Update existing product
                             await knex('products')
                                 .where('product_id', existingProduct.product_id)
                                 .update(productData);
                         } else {
-                            console.log(`Product does not exist, inserting new: ${record.product_name}`);
                             // Insert new product
                             validProducts.push(productData);
                         }
@@ -111,25 +132,20 @@ async function processPendingFiles() {
                         // Prepare vendor-product mappings
                         for (const vendor of validVendors) {
                             vendorProductMappings.push({
-                                product_name: record.product_name,
+                                product_name: sanitizedRecord.product_name,
                                 vendor_id: vendor.vendor_id
                             });
                         }
 
                     } catch (err) {
-                        console.error(`Error processing record ${record.product_name}: ${err.message}`);
-                        errors.push({ ...record, error: err.message });
+                        console.error(`Error processing record ${sanitizedRecord.product_name}: ${err.message}`);
+                        errors.push({ ...sanitizedRecord, error: err.message });
                     }
                 }
-
-                // Log valid products before insert
-                console.log(`Valid products to insert: ${validProducts.length}`);
-                console.log(validProducts);
 
                 // Insert valid products in batches
                 while (validProducts.length > 0) {
                     let batch = validProducts.splice(0, BATCH_SIZE);
-                    console.log(`Inserting a batch of ${batch.length} products`);
                     try {
                         await knex.batchInsert('products', batch, BATCH_SIZE);
                     } catch (error) {
@@ -153,12 +169,8 @@ async function processPendingFiles() {
                     status: 1
                 }));
 
-                // Log vendor-product mappings before insert
-                console.log(`Vendor-product mappings to insert: ${finalVendorProductMappings.length}`);
-
                 while (finalVendorProductMappings.length > 0) {
                     let batch = finalVendorProductMappings.splice(0, BATCH_SIZE);
-                    console.log(`Inserting a batch of ${batch.length} vendor-product mappings`);
                     try {
                         await knex.batchInsert('product_to_vendor', batch, BATCH_SIZE);
                     } catch (error) {
@@ -199,6 +211,7 @@ async function processPendingFiles() {
         console.error('Error fetching pending files:', error);
     }
 }
+
 
 // Schedule CRON Job every 10 minutes
 cron.schedule('*/10 * * * *', processPendingFiles);
