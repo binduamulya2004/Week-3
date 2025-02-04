@@ -35,4 +35,8 @@ module.exports = {
   async deleteRefreshToken(userId) {
     return knex('refresh_tokens').where({ user_id: userId }).del();
   },
+  // Example of querying users based on their role (for admin purposes or role-specific logic)
+  async findByRole(role) {
+    return db('users').where({ role });
+  },
 };

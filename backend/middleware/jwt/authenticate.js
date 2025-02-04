@@ -12,6 +12,8 @@ module.exports = (req, res, next) => {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("Decoded Token Data:", decoded);
+    
     req.user = decoded; // Attach the decoded token data to the request
     next();
   } catch (err) {

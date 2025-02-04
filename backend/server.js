@@ -4,6 +4,7 @@ const express = require('express');
 const WebSocket = require('ws');
 const dotenv = require('dotenv');
 const morgan = require('morgan');
+const responseTime = require('express-response-time');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const routes = require('./routes');
@@ -115,7 +116,12 @@ wss.on('connection', (ws) => {
 // Express server setup
 app.use(bodyParser.json());
 app.use(cors());
-app.use(morgan('dev'));
+
+app.use(morgan('tiny')); // Logs HTTP requests
+app.use(responseTime((req, res, time) => {
+    console.log(`Response time is : ${time}ms`);
+}));
+
 app.use(bodyParser.urlencoded({ extended: true }));
 
 //decypt 

@@ -53,11 +53,11 @@ async function uploadToS3(fileBuffer, fileName, mimeType, userId) {
 }
 
 function generateAccessToken(user) {
-  return jwt.sign({ id: user.user_id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '150m' });
+  return jwt.sign({ id: user.user_id, email: user.email , role: user.role}, process.env.JWT_SECRET, { expiresIn: '150m' });
 }
 
 function generateRefreshToken(user) {
-  return jwt.sign({ id: user.user_id, email: user.email }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ id: user.user_id, email: user.email, role: user.role }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 }
 
 
@@ -94,11 +94,18 @@ module.exports = {
 
   async login(req, res, next) {
     try {
-      const { email, password } = req.body;
+      const { email, password ,role} = req.body;
       console.log('^^^^',email);
       console.log(password);
+      console.log(role);
+
       const user = await userModel.findByEmail(email);
       if (!user) return res.status(400).json({ message: 'Invalid email or password' });
+
+      // Check if user role matches the one provided in the request
+      if (role && user.role !== role) {
+        return res.status(400).json({ message: 'Role mismatch. Please select the correct role.' });
+      }
 
       const isValidPassword = await bcrypt.compare(password, user.password);
       console.log(user.password);
@@ -111,7 +118,7 @@ module.exports = {
       // Store refresh token in the database
       await refreshTokenModel.storeRefreshToken(user.user_id, refreshToken);
 
-      res.status(200).json({ accessToken, refreshToken, userId: user.user_id });
+      res.status(200).json({ accessToken, refreshToken, userId: user.user_id ,role: user.role,});
     } catch (err) {
       next(err);
     }
